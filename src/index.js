@@ -7,6 +7,9 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const passwordRoutes = require('./routes/passwords');
+const gamificationRoutes = require('./routes/gamification');
+const exportRoutes = require('./routes/export');
+const generatorRoutes = require('./routes/generator');
 const { loginLimiter } = require('./middleware/rateLimit');
 
 const app = express();
@@ -25,6 +28,9 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/passwords', passwordRoutes);
+app.use('/api/gamification', gamificationRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/generator', generatorRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
