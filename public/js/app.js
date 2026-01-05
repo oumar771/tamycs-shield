@@ -4,29 +4,82 @@ let authToken = localStorage.getItem('authToken');
 let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
 let passwords = [];
 let currentFilter = 'all';
+let currentGeneratorMode = 'random';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    if (authToken && currentUser) {
-        showAppSection();
-        loadPasswords();
-    } else {
-        showAuthSection();
-    }
+    checkAuthStatus();
 
-    // Set up form handlers
-    setupFormHandlers();
+    // Generate initial password suggestions for public section
+    generateMultiplePasswords();
 });
 
-function setupFormHandlers() {
-    // Login form
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
+// Check authentication status
+function checkAuthStatus() {
+    if (authToken && currentUser) {
+        showDashboard();
+        loadPasswords();
+    } else {
+        showPublicSection();
+    }
+}
 
-    // Register form
-    document.getElementById('register-form').addEventListener('submit', handleRegister);
+// UI Navigation
+function showPublicSection() {
+    document.getElementById('public-section').style.display = 'block';
+    document.getElementById('dashboard-section').style.display = 'none';
+    document.getElementById('login-btn').style.display = 'inline-block';
+    document.getElementById('register-btn').style.display = 'inline-block';
+    document.getElementById('logout-btn').style.display = 'none';
+}
 
-    // Password form
-    document.getElementById('password-form').addEventListener('submit', handlePasswordSubmit);
+function showDashboard() {
+    document.getElementById('public-section').style.display = 'none';
+    document.getElementById('dashboard-section').style.display = 'block';
+    document.getElementById('login-btn').style.display = 'none';
+    document.getElementById('register-btn').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'inline-block';
+}
+
+// Modal Functions
+function showLoginModal() {
+    document.getElementById('login-modal').style.display = 'flex';
+}
+
+function closeLoginModal() {
+    document.getElementById('login-modal').style.display = 'none';
+    document.getElementById('login-form').reset();
+    document.getElementById('login-error').textContent = '';
+}
+
+function showRegisterModal() {
+    document.getElementById('register-modal').style.display = 'flex';
+}
+
+function closeRegisterModal() {
+    document.getElementById('register-modal').style.display = 'none';
+    document.getElementById('register-form').reset();
+    document.getElementById('register-error').textContent = '';
+}
+
+function showAddPasswordModal() {
+    document.getElementById('password-modal-title').textContent = 'Ajouter un mot de passe';
+    document.getElementById('password-form').reset();
+    document.getElementById('password-id').value = '';
+    document.getElementById('password-modal').style.display = 'flex';
+}
+
+function closePasswordModal() {
+    document.getElementById('password-modal').style.display = 'none';
+    document.getElementById('password-form').reset();
+}
+
+function showExportModal() {
+    document.getElementById('export-modal').style.display = 'flex';
+}
+
+function closeExportModal() {
+    document.getElementById('export-modal').style.display = 'none';
 }
 
 // Authentication Functions
@@ -51,13 +104,15 @@ async function handleLogin(e) {
             localStorage.setItem('authToken', authToken);
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-            showAppSection();
+            closeLoginModal();
+            showDashboard();
             loadPasswords();
+            showToast('Connexion réussie!', 'success');
         } else {
-            showError(errorEl, data.error || 'Identifiants incorrects');
+            errorEl.textContent = data.error || 'Identifiants incorrects';
         }
     } catch (error) {
-        showError(errorEl, 'Erreur de connexion au serveur');
+        errorEl.textContent = 'Erreur de connexion au serveur';
     }
 }
 
@@ -70,7 +125,7 @@ async function handleRegister(e) {
     const errorEl = document.getElementById('register-error');
 
     if (password !== passwordConfirm) {
-        showError(errorEl, 'Les mots de passe ne correspondent pas');
+        errorEl.textContent = 'Les mots de passe ne correspondent pas';
         return;
     }
 
@@ -89,13 +144,15 @@ async function handleRegister(e) {
             localStorage.setItem('authToken', authToken);
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-            showAppSection();
+            closeRegisterModal();
+            showDashboard();
             loadPasswords();
+            showToast('Compte créé avec succès!', 'success');
         } else {
-            showError(errorEl, data.error || 'Erreur lors de l\'inscription');
+            errorEl.textContent = data.error || 'Erreur lors de l\'inscription';
         }
     } catch (error) {
-        showError(errorEl, 'Erreur de connexion au serveur');
+        errorEl.textContent = 'Erreur de connexion au serveur';
     }
 }
 
@@ -104,33 +161,161 @@ function logout() {
     currentUser = null;
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
-    showAuthSection();
+    passwords = [];
+    showPublicSection();
+    showToast('Déconnexion réussie', 'success');
 }
 
-// UI Navigation
-function showAuthSection() {
-    document.getElementById('auth-section').style.display = 'flex';
-    document.getElementById('app-section').style.display = 'none';
+// Password Generator - Random Mode
+function switchGeneratorTab(mode) {
+    currentGeneratorMode = mode;
+
+    // Update tab active state
+    document.querySelectorAll('.generator-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.tab === mode) {
+            tab.classList.add('active');
+        }
+    });
+
+    // Show/hide generator content
+    document.querySelectorAll('.generator-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    if (mode === 'random') {
+        document.getElementById('random-generator').classList.add('active');
+        generateMultiplePasswords();
+    } else {
+        document.getElementById('memorable-generator').classList.add('active');
+        generateMultipleMemorablePasswords();
+    }
 }
 
-function showAppSection() {
-    document.getElementById('auth-section').style.display = 'none';
-    document.getElementById('app-section').style.display = 'block';
-    document.getElementById('user-name').textContent = currentUser.name || currentUser.email;
+function updateRandomLength(value) {
+    document.getElementById('random-length-value').textContent = value;
+    generateMultiplePasswords();
 }
 
-function showLogin() {
-    document.getElementById('login-form').style.display = 'block';
-    document.getElementById('register-form').style.display = 'none';
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-btn')[0].classList.add('active');
+function updateMemorableWords(value) {
+    document.getElementById('memorable-words-value').textContent = value;
+    generateMultipleMemorablePasswords();
 }
 
-function showRegister() {
-    document.getElementById('login-form').style.display = 'none';
-    document.getElementById('register-form').style.display = 'block';
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-btn')[1].classList.add('active');
+async function generateMultiplePasswords() {
+    const length = parseInt(document.getElementById('random-length').value);
+    const useUppercase = document.getElementById('random-uppercase').checked;
+    const useLowercase = document.getElementById('random-lowercase').checked;
+    const useNumbers = document.getElementById('random-numbers').checked;
+    const useSymbols = document.getElementById('random-symbols').checked;
+
+    const options = {
+        mode: 'random',
+        length,
+        includeUppercase: useUppercase,
+        includeLowercase: useLowercase,
+        includeNumbers: useNumbers,
+        includeSymbols: useSymbols
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(options)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'password-suggestions-list');
+        }
+    } catch (error) {
+        console.error('Error generating passwords:', error);
+    }
+}
+
+async function generateMultipleMemorablePasswords() {
+    const wordCount = parseInt(document.getElementById('memorable-words').value);
+    const separator = document.getElementById('memorable-separator').value;
+    const capitalizeWords = document.getElementById('memorable-capitalize').checked;
+    const includeNumbers = document.getElementById('memorable-numbers').checked;
+
+    const options = {
+        mode: 'memorable',
+        wordCount,
+        separator,
+        capitalizeWords,
+        includeNumbers
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(options)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'memorable-suggestions-list');
+        }
+    } catch (error) {
+        console.error('Error generating memorable passwords:', error);
+    }
+}
+
+function displayPasswordSuggestions(suggestions, containerId) {
+    const container = document.getElementById(containerId);
+
+    container.innerHTML = suggestions.map(item => `
+        <div class="password-suggestion">
+            <div class="password-suggestion-header">
+                <div class="password-strength-badge strength-${item.strength.toLowerCase()}">
+                    ${getStrengthIcon(item.strength)} ${item.strength}
+                </div>
+                <span class="password-entropy">${Math.round(item.entropy)} bits</span>
+            </div>
+            <div class="password-suggestion-value" title="${escapeHtml(item.password)}">
+                ${escapeHtml(item.password)}
+            </div>
+            <div class="password-suggestion-footer">
+                <span class="crack-time">${item.crackTime}</span>
+                <button class="btn-copy" onclick="copyToClipboard('${escapeHtml(item.password).replace(/'/g, "\\'")}', event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copier
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getStrengthIcon(strength) {
+    const icons = {
+        'Très faible': '🔴',
+        'Faible': '🟠',
+        'Moyen': '🟡',
+        'Fort': '🟢',
+        'Très fort': '🟢'
+    };
+    return icons[strength] || '⚪';
+}
+
+async function copyToClipboard(text, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast('Mot de passe copié!', 'success');
+    } catch (error) {
+        showToast('Erreur lors de la copie', 'error');
+    }
 }
 
 // Password Management
@@ -145,7 +330,7 @@ async function loadPasswords() {
         if (response.ok) {
             passwords = await response.json();
             displayPasswords();
-            updateCategories();
+            updateCategoryCounts();
         } else if (response.status === 401) {
             logout();
         }
@@ -156,6 +341,7 @@ async function loadPasswords() {
 
 function displayPasswords() {
     const container = document.getElementById('passwords-list');
+    const emptyState = document.getElementById('empty-state');
 
     let filteredPasswords = passwords;
     if (currentFilter !== 'all') {
@@ -163,55 +349,81 @@ function displayPasswords() {
     }
 
     if (filteredPasswords.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <h3>Aucun mot de passe</h3>
-                <p>Cliquez sur "Nouveau mot de passe" pour commencer</p>
-            </div>
-        `;
+        container.style.display = 'none';
+        emptyState.style.display = 'flex';
         return;
     }
+
+    container.style.display = 'grid';
+    emptyState.style.display = 'none';
 
     container.innerHTML = filteredPasswords.map(password => `
         <div class="password-card">
             <div class="password-card-header">
-                <div class="password-card-title">${escapeHtml(password.name)}</div>
-                <span class="password-card-category">${getCategoryLabel(password.category)}</span>
+                <div class="password-card-icon">
+                    ${getCategoryIcon(password.category)}
+                </div>
+                <div class="password-card-info">
+                    <h3>${escapeHtml(password.name)}</h3>
+                    <p>${escapeHtml(password.username)}</p>
+                </div>
             </div>
-            <div class="password-card-username">${escapeHtml(password.username)}</div>
-            <div class="password-card-value">""""""""""""</div>
             <div class="password-card-actions">
-                <button onclick="viewPassword('${password._id}')" class="btn btn-primary btn-small">Voir</button>
-                <button onclick="copyPassword('${password._id}')" class="btn btn-secondary btn-small">Copier</button>
-                <button onclick="editPassword('${password._id}')" class="btn btn-secondary btn-small">Modifier</button>
-                <button onclick="deletePassword('${password._id}')" class="btn btn-secondary btn-small">Supprimer</button>
+                <button onclick="copyPasswordById('${password._id}')" class="btn-action" title="Copier">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button onclick="editPassword('${password._id}')" class="btn-action" title="Modifier">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+                <button onclick="deletePassword('${password._id}')" class="btn-action" title="Supprimer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     `).join('');
 }
 
-function updateCategories() {
-    const categories = [...new Set(passwords.map(p => p.category))];
-    const categoriesList = document.getElementById('categories-list');
+function updateCategoryCounts() {
+    const counts = {
+        all: passwords.length,
+        social: passwords.filter(p => p.category === 'social').length,
+        email: passwords.filter(p => p.category === 'email').length,
+        banking: passwords.filter(p => p.category === 'banking').length,
+        work: passwords.filter(p => p.category === 'work').length,
+        shopping: passwords.filter(p => p.category === 'shopping').length
+    };
 
-    categoriesList.innerHTML = `
-        <li><a href="#" onclick="filterByCategory('all'); return false;" class="${currentFilter === 'all' ? 'active' : ''}">Tous (${passwords.length})</a></li>
-        ${categories.map(cat => {
-            const count = passwords.filter(p => p.category === cat).length;
-            return `<li><a href="#" onclick="filterByCategory('${cat}'); return false;" class="${currentFilter === cat ? 'active' : ''}">${getCategoryLabel(cat)} (${count})</a></li>`;
-        }).join('')}
-    `;
+    Object.entries(counts).forEach(([category, count]) => {
+        const el = document.getElementById(`count-${category}`);
+        if (el) {
+            el.textContent = count;
+        }
+    });
 }
 
 function filterByCategory(category) {
     currentFilter = category;
+
+    // Update active state
+    document.querySelectorAll('#categories-list li').forEach(li => {
+        li.classList.remove('active');
+    });
+    event.target.closest('li').classList.add('active');
+
     displayPasswords();
-    updateCategories();
 }
 
 function searchPasswords() {
     const query = document.getElementById('search-input').value.toLowerCase();
-    const container = document.getElementById('passwords-list');
 
     if (!query) {
         displayPasswords();
@@ -224,40 +436,62 @@ function searchPasswords() {
         (p.url && p.url.toLowerCase().includes(query))
     );
 
+    const container = document.getElementById('passwords-list');
+    const emptyState = document.getElementById('empty-state');
+
+    if (filtered.length === 0) {
+        container.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+    }
+
+    container.style.display = 'grid';
+    emptyState.style.display = 'none';
+
     container.innerHTML = filtered.map(password => `
         <div class="password-card">
             <div class="password-card-header">
-                <div class="password-card-title">${escapeHtml(password.name)}</div>
-                <span class="password-card-category">${getCategoryLabel(password.category)}</span>
+                <div class="password-card-icon">
+                    ${getCategoryIcon(password.category)}
+                </div>
+                <div class="password-card-info">
+                    <h3>${escapeHtml(password.name)}</h3>
+                    <p>${escapeHtml(password.username)}</p>
+                </div>
             </div>
-            <div class="password-card-username">${escapeHtml(password.username)}</div>
-            <div class="password-card-value">""""""""""""</div>
             <div class="password-card-actions">
-                <button onclick="viewPassword('${password._id}')" class="btn btn-primary btn-small">Voir</button>
-                <button onclick="copyPassword('${password._id}')" class="btn btn-secondary btn-small">Copier</button>
-                <button onclick="editPassword('${password._id}')" class="btn btn-secondary btn-small">Modifier</button>
-                <button onclick="deletePassword('${password._id}')" class="btn btn-secondary btn-small">Supprimer</button>
+                <button onclick="copyPasswordById('${password._id}')" class="btn-action" title="Copier">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button onclick="editPassword('${password._id}')" class="btn-action" title="Modifier">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+                <button onclick="deletePassword('${password._id}')" class="btn-action" title="Supprimer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     `).join('');
 }
 
-async function viewPassword(id) {
-    const password = passwords.find(p => p._id === id);
-    if (!password) return;
-
-    alert(`Nom: ${password.name}\nUtilisateur: ${password.username}\nMot de passe: ${password.password}\nURL: ${password.url || 'N/A'}\nNotes: ${password.notes || 'N/A'}`);
-}
-
-async function copyPassword(id) {
+async function copyPasswordById(id) {
     const password = passwords.find(p => p._id === id);
     if (!password) return;
 
     try {
         await navigator.clipboard.writeText(password.password);
-        alert('Mot de passe copi� dans le presse-papiers!');
+        showToast('Mot de passe copié!', 'success');
     } catch (error) {
-        alert('Erreur lors de la copie');
+        showToast('Erreur lors de la copie', 'error');
     }
 }
 
@@ -265,7 +499,7 @@ function editPassword(id) {
     const password = passwords.find(p => p._id === id);
     if (!password) return;
 
-    document.getElementById('modal-title').textContent = 'Modifier le mot de passe';
+    document.getElementById('password-modal-title').textContent = 'Modifier le mot de passe';
     document.getElementById('password-id').value = password._id;
     document.getElementById('password-name').value = password.name;
     document.getElementById('password-url').value = password.url || '';
@@ -274,11 +508,11 @@ function editPassword(id) {
     document.getElementById('password-category').value = password.category;
     document.getElementById('password-notes').value = password.notes || '';
 
-    showPasswordModal();
+    document.getElementById('password-modal').style.display = 'flex';
 }
 
 async function deletePassword(id) {
-    if (!confirm('�tes-vous s�r de vouloir supprimer ce mot de passe?')) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce mot de passe ?')) {
         return;
     }
 
@@ -292,15 +526,16 @@ async function deletePassword(id) {
 
         if (response.ok) {
             await loadPasswords();
+            showToast('Mot de passe supprimé', 'success');
         } else {
-            alert('Erreur lors de la suppression');
+            showToast('Erreur lors de la suppression', 'error');
         }
     } catch (error) {
-        alert('Erreur de connexion');
+        showToast('Erreur de connexion', 'error');
     }
 }
 
-async function handlePasswordSubmit(e) {
+async function handleSavePassword(e) {
     e.preventDefault();
 
     const id = document.getElementById('password-id').value;
@@ -329,91 +564,39 @@ async function handlePasswordSubmit(e) {
         if (response.ok) {
             closePasswordModal();
             await loadPasswords();
+            showToast(id ? 'Mot de passe modifié' : 'Mot de passe ajouté', 'success');
         } else {
-            alert('Erreur lors de l\'enregistrement');
+            showToast('Erreur lors de l\'enregistrement', 'error');
         }
     } catch (error) {
-        alert('Erreur de connexion');
+        showToast('Erreur de connexion', 'error');
     }
 }
 
-// Modal Functions
-function showAddPasswordModal() {
-    document.getElementById('modal-title').textContent = 'Nouveau mot de passe';
-    document.getElementById('password-form').reset();
-    document.getElementById('password-id').value = '';
-    showPasswordModal();
-}
-
-function showPasswordModal() {
-    document.getElementById('password-modal').classList.add('show');
-}
-
-function closePasswordModal() {
-    document.getElementById('password-modal').classList.remove('show');
-    document.getElementById('password-form').reset();
-}
-
-function showGeneratorModal() {
-    generatePassword();
-    document.getElementById('generator-modal').classList.add('show');
-}
-
-function closeGeneratorModal() {
-    document.getElementById('generator-modal').classList.remove('show');
-}
-
-// Password Generator
-function generatePassword() {
-    const length = parseInt(document.getElementById('gen-length').value);
-    const useUppercase = document.getElementById('gen-uppercase').checked;
-    const useLowercase = document.getElementById('gen-lowercase').checked;
-    const useNumbers = document.getElementById('gen-numbers').checked;
-    const useSymbols = document.getElementById('gen-symbols').checked;
-
-    let chars = '';
-    if (useUppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    if (useLowercase) chars += 'abcdefghijklmnopqrstuvwxyz';
-    if (useNumbers) chars += '0123456789';
-    if (useSymbols) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-    if (chars === '') {
-        alert('Veuillez s�lectionner au moins un type de caract�re');
-        return;
-    }
-
-    let password = '';
-    for (let i = 0; i < length; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    document.getElementById('generated-password').value = password;
-}
-
-function generatePasswordInModal() {
-    const length = 16;
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-    let password = '';
-    for (let i = 0; i < length; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    document.getElementById('password-value').value = password;
-}
-
-async function copyGeneratedPassword() {
-    const password = document.getElementById('generated-password').value;
+async function generatePasswordForModal() {
     try {
-        await navigator.clipboard.writeText(password);
-        alert('Mot de passe copi�!');
-    } catch (error) {
-        alert('Erreur lors de la copie');
-    }
-}
+        const response = await fetch(`${API_URL}/generator/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: 'random',
+                length: 16,
+                includeUppercase: true,
+                includeLowercase: true,
+                includeNumbers: true,
+                includeSymbols: true
+            })
+        });
 
-function updateLengthValue(value) {
-    document.getElementById('length-value').textContent = value;
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('password-value').value = data.password;
+            showToast(`Force: ${data.strength} (${Math.round(data.entropy)} bits)`, 'success');
+        }
+    } catch (error) {
+        console.error('Error generating password:', error);
+    }
 }
 
 function togglePasswordVisibility(fieldId) {
@@ -440,10 +623,53 @@ function sortPasswords() {
     displayPasswords();
 }
 
+// Export Functions
+async function exportData(format) {
+    try {
+        const response = await fetch(`${API_URL}/export/passwords/${format}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tamycs-shield-passwords-${Date.now()}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            closeExportModal();
+            showToast('Export réussi!', 'success');
+        } else {
+            showToast('Erreur lors de l\'export', 'error');
+        }
+    } catch (error) {
+        showToast('Erreur de connexion', 'error');
+    }
+}
+
 // Utility Functions
+function getCategoryIcon(category) {
+    const icons = {
+        'social': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+        'email': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>',
+        'banking': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>',
+        'work': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
+        'shopping': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
+        'other': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>'
+    };
+    return icons[category] || icons['other'];
+}
+
 function getCategoryLabel(category) {
     const labels = {
-        'social': 'R�seaux sociaux',
+        'social': 'Réseaux sociaux',
         'email': 'Email',
         'banking': 'Banque',
         'work': 'Travail',
@@ -454,22 +680,147 @@ function getCategoryLabel(category) {
 }
 
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-function showError(element, message) {
-    element.textContent = message;
-    element.classList.add('show');
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast toast-${type} show`;
+
     setTimeout(() => {
-        element.classList.remove('show');
-    }, 5000);
+        toast.classList.remove('show');
+    }, 3000);
 }
 
 // Close modals when clicking outside
 window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
-        event.target.classList.remove('show');
+        event.target.style.display = 'none';
+    }
+}
+
+// Close modals with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+    }
+});
+
+// Dashboard Generator Functions
+function showGeneratorSection() {
+    document.getElementById('generator-dashboard-modal').style.display = 'flex';
+    generateDashboardPasswords();
+}
+
+function closeGeneratorDashboardModal() {
+    document.getElementById('generator-dashboard-modal').style.display = 'none';
+}
+
+function switchDashboardGeneratorTab(mode) {
+    // Update tab active state
+    document.querySelectorAll('#generator-dashboard-modal .generator-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.tab === mode) {
+            tab.classList.add('active');
+        }
+    });
+
+    // Show/hide generator content
+    document.querySelectorAll('#generator-dashboard-modal .generator-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    if (mode === 'random') {
+        document.getElementById('dashboard-random-generator').classList.add('active');
+        generateDashboardPasswords();
+    } else {
+        document.getElementById('dashboard-memorable-generator').classList.add('active');
+        generateDashboardMemorablePasswords();
+    }
+}
+
+function updateDashboardRandomLength(value) {
+    document.getElementById('dashboard-random-length-value').textContent = value;
+    generateDashboardPasswords();
+}
+
+function updateDashboardMemorableWords(value) {
+    document.getElementById('dashboard-memorable-words-value').textContent = value;
+    generateDashboardMemorablePasswords();
+}
+
+async function generateDashboardPasswords() {
+    const length = parseInt(document.getElementById('dashboard-random-length').value);
+    const useUppercase = document.getElementById('dashboard-random-uppercase').checked;
+    const useLowercase = document.getElementById('dashboard-random-lowercase').checked;
+    const useNumbers = document.getElementById('dashboard-random-numbers').checked;
+    const useSymbols = document.getElementById('dashboard-random-symbols').checked;
+
+    const options = {
+        mode: 'random',
+        length,
+        includeUppercase: useUppercase,
+        includeLowercase: useLowercase,
+        includeNumbers: useNumbers,
+        includeSymbols: useSymbols
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authToken ? `Bearer ${authToken}` : ''
+            },
+            body: JSON.stringify(options)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'dashboard-password-suggestions-list');
+        }
+    } catch (error) {
+        console.error('Error generating passwords:', error);
+    }
+}
+
+async function generateDashboardMemorablePasswords() {
+    const wordCount = parseInt(document.getElementById('dashboard-memorable-words').value);
+    const separator = document.getElementById('dashboard-memorable-separator').value;
+    const capitalizeWords = document.getElementById('dashboard-memorable-capitalize').checked;
+    const includeNumbers = document.getElementById('dashboard-memorable-numbers').checked;
+
+    const options = {
+        mode: 'memorable',
+        wordCount,
+        separator,
+        capitalizeWords,
+        includeNumbers
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authToken ? `Bearer ${authToken}` : ''
+            },
+            body: JSON.stringify(options)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'dashboard-memorable-suggestions-list');
+        }
+    } catch (error) {
+        console.error('Error generating memorable passwords:', error);
     }
 }

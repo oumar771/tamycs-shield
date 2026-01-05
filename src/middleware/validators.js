@@ -10,6 +10,8 @@ const passwordValidator = [
     .withMessage('Le mot de passe doit contenir au moins une majuscule')
     .matches(/[0-9]/)
     .withMessage('Le mot de passe doit contenir au moins un chiffre')
+    .matches(/[!@#$%^&*(),.?":{}|<>_+\-=[\]\\;']/)
+    .withMessage('Le mot de passe doit contenir au moins un symbole')
 ];
 
 const emailValidator = [
