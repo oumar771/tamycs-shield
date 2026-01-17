@@ -15,7 +15,7 @@ Gestionnaire de mots de passe sécurisé développé dans le cadre d'un projet B
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/votre-username/tamycs-shield.git
+(https://github.com/oumar771/tamycs-shield.git)
 cd tamycs-shield
 
 # Installer les dépendances
