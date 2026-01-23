@@ -1,826 +1,663 @@
-// API Configuration
-const API_URL = 'http://localhost:3000/api';
-let authToken = localStorage.getItem('authToken');
-let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-let passwords = [];
-let currentFilter = 'all';
-let currentGeneratorMode = 'random';
+/**
+ * Application de Gestion de Comptes Utilisateurs
+ * Projet Programmation Sécurisée - ESAIP
+ *
+ * Ce fichier gère la logique frontend de l'application :
+ * - Authentification (connexion/inscription)
+ * - Gestion du profil utilisateur
+ * - Administration des utilisateurs (pour les admins)
+ *
+ * SÉCURITÉ : Le token JWT est stocké dans un cookie HTTP-only côté serveur.
+ * Le frontend ne manipule plus le token directement, ce qui protège contre les attaques XSS.
+ */
 
-// Initialize app
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuthStatus();
+// Configuration de l'API
+const API_URL = '/api';
 
-    // Generate initial password suggestions for public section
-    generateMultiplePasswords();
+// État de l'application (l'utilisateur connecté)
+let currentUser = null;
+
+// ============================================
+// INITIALISATION
+// ============================================
+
+/**
+ * Initialise l'application au chargement de la page
+ * Vérifie si une session est active en appelant /api/auth/me
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Attacher les événements aux boutons
+    initEventListeners();
+
+    // Vérifier si l'utilisateur a une session active (cookie valide)
+    checkSession();
 });
 
-// Check authentication status
-function checkAuthStatus() {
-    if (authToken && currentUser) {
-        showDashboard();
-        loadPasswords();
-    } else {
-        showPublicSection();
-    }
-}
-
-// UI Navigation
-function showPublicSection() {
-    document.getElementById('public-section').style.display = 'block';
-    document.getElementById('dashboard-section').style.display = 'none';
-    document.getElementById('login-btn').style.display = 'inline-block';
-    document.getElementById('register-btn').style.display = 'inline-block';
-    document.getElementById('logout-btn').style.display = 'none';
-}
-
-function showDashboard() {
-    document.getElementById('public-section').style.display = 'none';
-    document.getElementById('dashboard-section').style.display = 'block';
-    document.getElementById('login-btn').style.display = 'none';
-    document.getElementById('register-btn').style.display = 'none';
-    document.getElementById('logout-btn').style.display = 'inline-block';
-}
-
-// Modal Functions
-function showLoginModal() {
-    document.getElementById('login-modal').style.display = 'flex';
-}
-
-function closeLoginModal() {
-    document.getElementById('login-modal').style.display = 'none';
-    document.getElementById('login-form').reset();
-    document.getElementById('login-error').textContent = '';
-}
-
-function showRegisterModal() {
-    document.getElementById('register-modal').style.display = 'flex';
-}
-
-function closeRegisterModal() {
-    document.getElementById('register-modal').style.display = 'none';
-    document.getElementById('register-form').reset();
-    document.getElementById('register-error').textContent = '';
-}
-
-function showAddPasswordModal() {
-    document.getElementById('password-modal-title').textContent = 'Ajouter un mot de passe';
-    document.getElementById('password-form').reset();
-    document.getElementById('password-id').value = '';
-    document.getElementById('password-modal').style.display = 'flex';
-}
-
-function closePasswordModal() {
-    document.getElementById('password-modal').style.display = 'none';
-    document.getElementById('password-form').reset();
-}
-
-function showExportModal() {
-    document.getElementById('export-modal').style.display = 'flex';
-}
-
-function closeExportModal() {
-    document.getElementById('export-modal').style.display = 'none';
-}
-
-// Authentication Functions
-async function handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    const errorEl = document.getElementById('login-error');
-
+/**
+ * Vérifie si l'utilisateur a une session active
+ * Le serveur vérifie le cookie HTTP-only et renvoie les infos utilisateur
+ */
+async function checkSession() {
     try {
-        const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+        var response = await fetch(API_URL + '/auth/me', {
+            credentials: 'include' // Inclure les cookies dans la requête
         });
 
-        const data = await response.json();
-
         if (response.ok) {
-            authToken = data.token;
+            var data = await response.json();
             currentUser = data.user;
-            localStorage.setItem('authToken', authToken);
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-            closeLoginModal();
             showDashboard();
-            loadPasswords();
-            showToast('Connexion réussie!', 'success');
-        } else {
-            errorEl.textContent = data.error || 'Identifiants incorrects';
         }
+        // Si pas de session valide, on reste sur la page publique
     } catch (error) {
-        errorEl.textContent = 'Erreur de connexion au serveur';
+        // Erreur réseau, on reste sur la page publique
+        console.log('Pas de session active');
     }
 }
 
-async function handleRegister(e) {
-    e.preventDefault();
-    const name = document.getElementById('register-name').value;
-    const email = document.getElementById('register-email').value;
-    const password = document.getElementById('register-password').value;
-    const passwordConfirm = document.getElementById('register-password-confirm').value;
-    const errorEl = document.getElementById('register-error');
+/**
+ * Initialise tous les écouteurs d'événements
+ */
+function initEventListeners() {
+    // Boutons de la navbar
+    document.getElementById('btn-login').addEventListener('click', function() {
+        showModal('login-modal');
+    });
 
-    if (password !== passwordConfirm) {
-        errorEl.textContent = 'Les mots de passe ne correspondent pas';
+    document.getElementById('btn-register').addEventListener('click', function() {
+        showModal('register-modal');
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', logout);
+
+    // Formulaires
+    document.getElementById('login-form').addEventListener('submit', handleLogin);
+    document.getElementById('register-form').addEventListener('submit', handleRegister);
+    document.getElementById('profile-form').addEventListener('submit', updateProfile);
+    document.getElementById('password-form').addEventListener('submit', changePassword);
+    document.getElementById('role-form').addEventListener('submit', updateUserRole);
+
+    // Boutons de fermeture des modales
+    document.querySelectorAll('.modal-close').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var modal = this.closest('.modal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        });
+    });
+
+    // Liens dans les modales
+    document.getElementById('link-to-register').addEventListener('click', function(e) {
+        e.preventDefault();
+        closeModal('login-modal');
+        showModal('register-modal');
+    });
+
+    document.getElementById('link-to-login').addEventListener('click', function(e) {
+        e.preventDefault();
+        closeModal('register-modal');
+        showModal('login-modal');
+    });
+
+    // Navigation sidebar
+    document.getElementById('nav-profile').addEventListener('click', function(e) {
+        e.preventDefault();
+        showView('profile', this);
+    });
+
+    document.getElementById('nav-security').addEventListener('click', function(e) {
+        e.preventDefault();
+        showView('security', this);
+    });
+
+    document.getElementById('nav-users').addEventListener('click', function(e) {
+        e.preventDefault();
+        showView('users', this);
+    });
+
+    // Fermer la modale en cliquant à l'extérieur
+    document.querySelectorAll('.modal').forEach(function(modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('show');
+            }
+        });
+    });
+
+    // Fermer les modales avec Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal.show').forEach(function(modal) {
+                modal.classList.remove('show');
+            });
+        }
+    });
+}
+
+// ============================================
+// GESTION DES MODALES
+// ============================================
+
+/**
+ * Affiche une modale par son ID
+ */
+function showModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+/**
+ * Ferme une modale par son ID
+ */
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
+        var form = modal.querySelector('form');
+        if (form) form.reset();
+        var error = modal.querySelector('.alert-error');
+        if (error) error.style.display = 'none';
+    }
+}
+
+// ============================================
+// AUTHENTIFICATION
+// ============================================
+
+/**
+ * Gère la soumission du formulaire de connexion
+ * Le token est stocké dans un cookie HTTP-only par le serveur
+ */
+async function handleLogin(event) {
+    event.preventDefault();
+
+    var email = document.getElementById('login-email').value.trim();
+    var password = document.getElementById('login-password').value;
+    var errorDiv = document.getElementById('login-error');
+
+    if (!email || !password) {
+        showError(errorDiv, 'Veuillez remplir tous les champs');
         return;
     }
 
     try {
-        const response = await fetch(`${API_URL}/auth/register`, {
+        var response = await fetch(API_URL + '/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include', // Permet au serveur de définir le cookie
+            body: JSON.stringify({ email: email, password: password })
         });
 
-        const data = await response.json();
+        var data = await response.json();
 
-        if (response.ok) {
-            authToken = data.token;
-            currentUser = data.user;
-            localStorage.setItem('authToken', authToken);
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-            closeRegisterModal();
-            showDashboard();
-            loadPasswords();
-            showToast('Compte créé avec succès!', 'success');
-        } else {
-            errorEl.textContent = data.error || 'Erreur lors de l\'inscription';
+        if (!response.ok) {
+            showError(errorDiv, data.error || 'Identifiants incorrects');
+            return;
         }
+
+        // Le token est maintenant dans un cookie HTTP-only
+        // On stocke uniquement les infos utilisateur (pas sensibles)
+        currentUser = data.user;
+
+        closeModal('login-modal');
+        showDashboard();
+        showToast('Connexion réussie', 'success');
+
     } catch (error) {
-        errorEl.textContent = 'Erreur de connexion au serveur';
+        showError(errorDiv, 'Erreur de connexion au serveur');
     }
 }
 
-function logout() {
-    authToken = null;
+/**
+ * Gère la soumission du formulaire d'inscription
+ * Le token est stocké dans un cookie HTTP-only par le serveur
+ */
+async function handleRegister(event) {
+    event.preventDefault();
+
+    var name = document.getElementById('register-name').value.trim();
+    var email = document.getElementById('register-email').value.trim();
+    var password = document.getElementById('register-password').value;
+    var confirm = document.getElementById('register-confirm').value;
+    var errorDiv = document.getElementById('register-error');
+
+    if (!name || !email || !password || !confirm) {
+        showError(errorDiv, 'Veuillez remplir tous les champs');
+        return;
+    }
+
+    if (password.length < 8) {
+        showError(errorDiv, 'Le mot de passe doit contenir au moins 8 caractères');
+        return;
+    }
+
+    if (password !== confirm) {
+        showError(errorDiv, 'Les mots de passe ne correspondent pas');
+        return;
+    }
+
+    try {
+        var response = await fetch(API_URL + '/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include', // Permet au serveur de définir le cookie
+            body: JSON.stringify({ name: name, email: email, password: password })
+        });
+
+        var data = await response.json();
+
+        if (!response.ok) {
+            showError(errorDiv, data.error || 'Erreur lors de l\'inscription');
+            return;
+        }
+
+        // Le token est maintenant dans un cookie HTTP-only
+        currentUser = data.user;
+
+        closeModal('register-modal');
+        showDashboard();
+        showToast('Compte créé avec succès', 'success');
+
+    } catch (error) {
+        showError(errorDiv, 'Erreur de connexion au serveur');
+    }
+}
+
+/**
+ * Déconnecte l'utilisateur
+ * Appelle le serveur pour supprimer le cookie HTTP-only
+ */
+async function logout() {
+    try {
+        await fetch(API_URL + '/auth/logout', {
+            method: 'POST',
+            credentials: 'include' // Envoie le cookie au serveur pour suppression
+        });
+    } catch (error) {
+        // Même en cas d'erreur, on déconnecte côté client
+    }
+
     currentUser = null;
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('currentUser');
-    passwords = [];
-    showPublicSection();
+
+    document.getElementById('public-section').style.display = 'block';
+    document.getElementById('dashboard-section').style.display = 'none';
+    document.getElementById('auth-buttons').style.display = 'flex';
+    document.getElementById('user-nav').style.display = 'none';
+
     showToast('Déconnexion réussie', 'success');
 }
 
-// Password Generator - Random Mode
-function switchGeneratorTab(mode) {
-    currentGeneratorMode = mode;
+// ============================================
+// INTERFACE UTILISATEUR
+// ============================================
 
-    // Update tab active state
-    document.querySelectorAll('.generator-tab').forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.tab === mode) {
-            tab.classList.add('active');
-        }
-    });
+/**
+ * Affiche le tableau de bord après connexion
+ */
+function showDashboard() {
+    document.getElementById('public-section').style.display = 'none';
+    document.getElementById('dashboard-section').style.display = 'block';
 
-    // Show/hide generator content
-    document.querySelectorAll('.generator-content').forEach(content => {
-        content.classList.remove('active');
-    });
+    document.getElementById('auth-buttons').style.display = 'none';
+    document.getElementById('user-nav').style.display = 'flex';
+    document.getElementById('user-display-name').textContent = currentUser.name;
 
-    if (mode === 'random') {
-        document.getElementById('random-generator').classList.add('active');
-        generateMultiplePasswords();
+    var roleBadge = document.getElementById('user-role-badge');
+    roleBadge.textContent = currentUser.role === 'admin' ? 'ADMIN' : 'USER';
+    roleBadge.className = 'user-role ' + currentUser.role;
+
+    var adminMenu = document.getElementById('admin-menu');
+    if (currentUser.role === 'admin') {
+        adminMenu.style.display = 'block';
     } else {
-        document.getElementById('memorable-generator').classList.add('active');
-        generateMultipleMemorablePasswords();
-    }
-}
-
-function updateRandomLength(value) {
-    document.getElementById('random-length-value').textContent = value;
-    generateMultiplePasswords();
-}
-
-function updateMemorableWords(value) {
-    document.getElementById('memorable-words-value').textContent = value;
-    generateMultipleMemorablePasswords();
-}
-
-async function generateMultiplePasswords() {
-    const length = parseInt(document.getElementById('random-length').value);
-    const useUppercase = document.getElementById('random-uppercase').checked;
-    const useLowercase = document.getElementById('random-lowercase').checked;
-    const useNumbers = document.getElementById('random-numbers').checked;
-    const useSymbols = document.getElementById('random-symbols').checked;
-
-    const options = {
-        mode: 'random',
-        length,
-        includeUppercase: useUppercase,
-        includeLowercase: useLowercase,
-        includeNumbers: useNumbers,
-        includeSymbols: useSymbols
-    };
-
-    try {
-        const response = await fetch(`${API_URL}/generator/multiple`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(options)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            displayPasswordSuggestions(data.passwords, 'password-suggestions-list');
-        }
-    } catch (error) {
-        console.error('Error generating passwords:', error);
-    }
-}
-
-async function generateMultipleMemorablePasswords() {
-    const wordCount = parseInt(document.getElementById('memorable-words').value);
-    const separator = document.getElementById('memorable-separator').value;
-    const capitalizeWords = document.getElementById('memorable-capitalize').checked;
-    const includeNumbers = document.getElementById('memorable-numbers').checked;
-
-    const options = {
-        mode: 'memorable',
-        wordCount,
-        separator,
-        capitalizeWords,
-        includeNumbers
-    };
-
-    try {
-        const response = await fetch(`${API_URL}/generator/multiple`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(options)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            displayPasswordSuggestions(data.passwords, 'memorable-suggestions-list');
-        }
-    } catch (error) {
-        console.error('Error generating memorable passwords:', error);
-    }
-}
-
-function displayPasswordSuggestions(suggestions, containerId) {
-    const container = document.getElementById(containerId);
-
-    container.innerHTML = suggestions.map(item => `
-        <div class="password-suggestion">
-            <div class="password-suggestion-header">
-                <div class="password-strength-badge strength-${item.strength.toLowerCase()}">
-                    ${getStrengthIcon(item.strength)} ${item.strength}
-                </div>
-                <span class="password-entropy">${Math.round(item.entropy)} bits</span>
-            </div>
-            <div class="password-suggestion-value" title="${escapeHtml(item.password)}">
-                ${escapeHtml(item.password)}
-            </div>
-            <div class="password-suggestion-footer">
-                <span class="crack-time">${item.crackTime}</span>
-                <button class="btn-copy" onclick="copyToClipboard('${escapeHtml(item.password).replace(/'/g, "\\'")}', event)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    Copier
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function getStrengthIcon(strength) {
-    const icons = {
-        'Très faible': '🔴',
-        'Faible': '🟠',
-        'Moyen': '🟡',
-        'Fort': '🟢',
-        'Très fort': '🟢'
-    };
-    return icons[strength] || '⚪';
-}
-
-async function copyToClipboard(text, event) {
-    if (event) {
-        event.stopPropagation();
+        adminMenu.style.display = 'none';
     }
 
-    try {
-        await navigator.clipboard.writeText(text);
-        showToast('Mot de passe copié!', 'success');
-    } catch (error) {
-        showToast('Erreur lors de la copie', 'error');
-    }
+    loadProfile();
 }
 
-// Password Management
-async function loadPasswords() {
-    try {
-        const response = await fetch(`${API_URL}/passwords`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (response.ok) {
-            passwords = await response.json();
-            displayPasswords();
-            updateCategoryCounts();
-        } else if (response.status === 401) {
-            logout();
-        }
-    } catch (error) {
-        console.error('Error loading passwords:', error);
-    }
-}
-
-function displayPasswords() {
-    const container = document.getElementById('passwords-list');
-    const emptyState = document.getElementById('empty-state');
-
-    let filteredPasswords = passwords;
-    if (currentFilter !== 'all') {
-        filteredPasswords = passwords.filter(p => p.category === currentFilter);
-    }
-
-    if (filteredPasswords.length === 0) {
-        container.style.display = 'none';
-        emptyState.style.display = 'flex';
-        return;
-    }
-
-    container.style.display = 'grid';
-    emptyState.style.display = 'none';
-
-    container.innerHTML = filteredPasswords.map(password => `
-        <div class="password-card">
-            <div class="password-card-header">
-                <div class="password-card-icon">
-                    ${getCategoryIcon(password.category)}
-                </div>
-                <div class="password-card-info">
-                    <h3>${escapeHtml(password.name)}</h3>
-                    <p>${escapeHtml(password.username)}</p>
-                </div>
-            </div>
-            <div class="password-card-actions">
-                <button onclick="copyPasswordById('${password._id}')" class="btn-action" title="Copier">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                </button>
-                <button onclick="editPassword('${password._id}')" class="btn-action" title="Modifier">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                </button>
-                <button onclick="deletePassword('${password._id}')" class="btn-action" title="Supprimer">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function updateCategoryCounts() {
-    const counts = {
-        all: passwords.length,
-        social: passwords.filter(p => p.category === 'social').length,
-        email: passwords.filter(p => p.category === 'email').length,
-        banking: passwords.filter(p => p.category === 'banking').length,
-        work: passwords.filter(p => p.category === 'work').length,
-        shopping: passwords.filter(p => p.category === 'shopping').length
-    };
-
-    Object.entries(counts).forEach(([category, count]) => {
-        const el = document.getElementById(`count-${category}`);
-        if (el) {
-            el.textContent = count;
-        }
+/**
+ * Affiche une vue spécifique dans le dashboard
+ */
+function showView(viewName, clickedLink) {
+    // Masquer toutes les vues
+    document.querySelectorAll('.view').forEach(function(view) {
+        view.style.display = 'none';
     });
-}
 
-function filterByCategory(category) {
-    currentFilter = category;
+    // Afficher la vue demandée
+    var view = document.getElementById('view-' + viewName);
+    if (view) {
+        view.style.display = 'block';
+    }
 
-    // Update active state
-    document.querySelectorAll('#categories-list li').forEach(li => {
-        li.classList.remove('active');
+    // Mettre à jour le menu actif
+    document.querySelectorAll('.sidebar-menu a').forEach(function(link) {
+        link.classList.remove('active');
     });
-    event.target.closest('li').classList.add('active');
-
-    displayPasswords();
-}
-
-function searchPasswords() {
-    const query = document.getElementById('search-input').value.toLowerCase();
-
-    if (!query) {
-        displayPasswords();
-        return;
+    if (clickedLink) {
+        clickedLink.classList.add('active');
     }
 
-    const filtered = passwords.filter(p =>
-        p.name.toLowerCase().includes(query) ||
-        p.username.toLowerCase().includes(query) ||
-        (p.url && p.url.toLowerCase().includes(query))
-    );
-
-    const container = document.getElementById('passwords-list');
-    const emptyState = document.getElementById('empty-state');
-
-    if (filtered.length === 0) {
-        container.style.display = 'none';
-        emptyState.style.display = 'flex';
-        return;
-    }
-
-    container.style.display = 'grid';
-    emptyState.style.display = 'none';
-
-    container.innerHTML = filtered.map(password => `
-        <div class="password-card">
-            <div class="password-card-header">
-                <div class="password-card-icon">
-                    ${getCategoryIcon(password.category)}
-                </div>
-                <div class="password-card-info">
-                    <h3>${escapeHtml(password.name)}</h3>
-                    <p>${escapeHtml(password.username)}</p>
-                </div>
-            </div>
-            <div class="password-card-actions">
-                <button onclick="copyPasswordById('${password._id}')" class="btn-action" title="Copier">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                </button>
-                <button onclick="editPassword('${password._id}')" class="btn-action" title="Modifier">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                </button>
-                <button onclick="deletePassword('${password._id}')" class="btn-action" title="Supprimer">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-async function copyPasswordById(id) {
-    const password = passwords.find(p => p._id === id);
-    if (!password) return;
-
-    try {
-        await navigator.clipboard.writeText(password.password);
-        showToast('Mot de passe copié!', 'success');
-    } catch (error) {
-        showToast('Erreur lors de la copie', 'error');
+    // Charger les données selon la vue
+    if (viewName === 'users' && currentUser.role === 'admin') {
+        loadUsers();
+    } else if (viewName === 'security') {
+        loadSecurityInfo();
     }
 }
 
-function editPassword(id) {
-    const password = passwords.find(p => p._id === id);
-    if (!password) return;
+// ============================================
+// GESTION DU PROFIL
+// ============================================
 
-    document.getElementById('password-modal-title').textContent = 'Modifier le mot de passe';
-    document.getElementById('password-id').value = password._id;
-    document.getElementById('password-name').value = password.name;
-    document.getElementById('password-url').value = password.url || '';
-    document.getElementById('password-username').value = password.username;
-    document.getElementById('password-value').value = password.password;
-    document.getElementById('password-category').value = password.category;
-    document.getElementById('password-notes').value = password.notes || '';
+/**
+ * Charge et affiche les informations du profil utilisateur
+ */
+function loadProfile() {
+    document.getElementById('profile-name').textContent = currentUser.name;
+    document.getElementById('profile-email').textContent = currentUser.email;
+    document.getElementById('profile-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
 
-    document.getElementById('password-modal').style.display = 'flex';
+    document.getElementById('profile-name-input').value = currentUser.name;
+    document.getElementById('profile-email-input').value = currentUser.email;
 }
 
-async function deletePassword(id) {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce mot de passe ?')) {
+/**
+ * Met à jour les informations du profil utilisateur
+ */
+async function updateProfile(event) {
+    event.preventDefault();
+
+    var name = document.getElementById('profile-name-input').value.trim();
+    var email = document.getElementById('profile-email-input').value.trim();
+
+    if (!name || !email) {
+        showToast('Veuillez remplir tous les champs', 'error');
         return;
     }
 
     try {
-        const response = await fetch(`${API_URL}/passwords/${id}`, {
-            method: 'DELETE',
+        var response = await fetch(API_URL + '/auth/profile', {
+            method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (response.ok) {
-            await loadPasswords();
-            showToast('Mot de passe supprimé', 'success');
-        } else {
-            showToast('Erreur lors de la suppression', 'error');
-        }
-    } catch (error) {
-        showToast('Erreur de connexion', 'error');
-    }
-}
-
-async function handleSavePassword(e) {
-    e.preventDefault();
-
-    const id = document.getElementById('password-id').value;
-    const passwordData = {
-        name: document.getElementById('password-name').value,
-        url: document.getElementById('password-url').value,
-        username: document.getElementById('password-username').value,
-        password: document.getElementById('password-value').value,
-        category: document.getElementById('password-category').value,
-        notes: document.getElementById('password-notes').value
-    };
-
-    try {
-        const url = id ? `${API_URL}/passwords/${id}` : `${API_URL}/passwords`;
-        const method = id ? 'PUT' : 'POST';
-
-        const response = await fetch(url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(passwordData)
+            credentials: 'include', // Envoie le cookie d'authentification
+            body: JSON.stringify({ name: name, email: email })
         });
 
-        if (response.ok) {
-            closePasswordModal();
-            await loadPasswords();
-            showToast(id ? 'Mot de passe modifié' : 'Mot de passe ajouté', 'success');
-        } else {
-            showToast('Erreur lors de l\'enregistrement', 'error');
+        var data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Erreur lors de la mise à jour', 'error');
+            return;
         }
+
+        currentUser.name = name;
+        currentUser.email = email;
+
+        loadProfile();
+        document.getElementById('user-display-name').textContent = name;
+
+        showToast('Profil mis à jour', 'success');
+
     } catch (error) {
-        showToast('Erreur de connexion', 'error');
+        showToast('Erreur de connexion au serveur', 'error');
     }
 }
 
-async function generatePasswordForModal() {
+/**
+ * Charge les informations de sécurité du compte
+ */
+function loadSecurityInfo() {
+    if (currentUser.createdAt) {
+        var date = new Date(currentUser.createdAt);
+        document.getElementById('account-created').textContent = date.toLocaleDateString('fr-FR');
+    }
+
+    if (currentUser.lastLogin) {
+        var date = new Date(currentUser.lastLogin);
+        document.getElementById('last-login').textContent = date.toLocaleString('fr-FR');
+    } else {
+        document.getElementById('last-login').textContent = 'Première connexion';
+    }
+}
+
+/**
+ * Change le mot de passe de l'utilisateur
+ */
+async function changePassword(event) {
+    event.preventDefault();
+
+    var currentPassword = document.getElementById('current-password').value;
+    var newPassword = document.getElementById('new-password').value;
+    var confirmPassword = document.getElementById('confirm-password').value;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showToast('Veuillez remplir tous les champs', 'error');
+        return;
+    }
+
+    if (newPassword.length < 8) {
+        showToast('Le nouveau mot de passe doit contenir au moins 8 caractères', 'error');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showToast('Les nouveaux mots de passe ne correspondent pas', 'error');
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_URL}/generator/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                mode: 'random',
-                length: 16,
-                includeUppercase: true,
-                includeLowercase: true,
-                includeNumbers: true,
-                includeSymbols: true
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            document.getElementById('password-value').value = data.password;
-            showToast(`Force: ${data.strength} (${Math.round(data.entropy)} bits)`, 'success');
-        }
-    } catch (error) {
-        console.error('Error generating password:', error);
-    }
-}
-
-function togglePasswordVisibility(fieldId) {
-    const field = document.getElementById(fieldId);
-    field.type = field.type === 'password' ? 'text' : 'password';
-}
-
-function sortPasswords() {
-    const sortBy = document.getElementById('sort-select').value;
-
-    switch(sortBy) {
-        case 'name':
-            passwords.sort((a, b) => a.name.localeCompare(b.name));
-            break;
-        case 'category':
-            passwords.sort((a, b) => a.category.localeCompare(b.category));
-            break;
-        case 'recent':
-        default:
-            passwords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            break;
-    }
-
-    displayPasswords();
-}
-
-// Export Functions
-async function exportData(format) {
-    try {
-        const response = await fetch(`${API_URL}/export/passwords/${format}`, {
-            method: 'POST',
+        var response = await fetch(API_URL + '/auth/password', {
+            method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword })
         });
 
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `tamycs-shield-passwords-${Date.now()}.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+        var data = await response.json();
 
-            closeExportModal();
-            showToast('Export réussi!', 'success');
-        } else {
-            showToast('Erreur lors de l\'export', 'error');
+        if (!response.ok) {
+            showToast(data.error || 'Erreur lors du changement de mot de passe', 'error');
+            return;
         }
+
+        document.getElementById('password-form').reset();
+        showToast('Mot de passe modifié avec succès', 'success');
+
     } catch (error) {
-        showToast('Erreur de connexion', 'error');
+        showToast('Erreur de connexion au serveur', 'error');
     }
 }
 
-// Utility Functions
-function getCategoryIcon(category) {
-    const icons = {
-        'social': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
-        'email': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>',
-        'banking': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>',
-        'work': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
-        'shopping': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
-        'other': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>'
-    };
-    return icons[category] || icons['other'];
+// ============================================
+// ADMINISTRATION - GESTION DES UTILISATEURS
+// ============================================
+
+/**
+ * Charge la liste de tous les utilisateurs (admin uniquement)
+ */
+async function loadUsers() {
+    try {
+        var response = await fetch(API_URL + '/auth/users', {
+            credentials: 'include'
+        });
+
+        var data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Erreur lors du chargement', 'error');
+            return;
+        }
+
+        var totalUsers = data.users.length;
+        var adminUsers = data.users.filter(function(u) { return u.role === 'admin'; }).length;
+        document.getElementById('stat-total-users').textContent = totalUsers;
+        document.getElementById('stat-admin-users').textContent = adminUsers;
+
+        var tbody = document.getElementById('users-table-body');
+        var emptyState = document.getElementById('users-empty');
+
+        if (data.users.length === 0) {
+            tbody.innerHTML = '';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+
+        var html = '';
+        data.users.forEach(function(user) {
+            html += '<tr>';
+            html += '<td>' + escapeHtml(user.name) + '</td>';
+            html += '<td>' + escapeHtml(user.email) + '</td>';
+            html += '<td><span class="badge badge-' + user.role + '">' + (user.role === 'admin' ? 'Admin' : 'Utilisateur') + '</span></td>';
+            html += '<td>' + new Date(user.createdAt).toLocaleDateString('fr-FR') + '</td>';
+            html += '<td class="table-actions">';
+            html += '<button class="btn btn-sm btn-secondary" data-action="edit-role" data-user-id="' + user.id + '" data-user-role="' + user.role + '">Modifier rôle</button>';
+            if (user.id !== currentUser.id) {
+                html += ' <button class="btn btn-sm btn-danger" data-action="delete-user" data-user-id="' + user.id + '">Supprimer</button>';
+            }
+            html += '</td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+
+        // Attacher les événements aux boutons
+        tbody.querySelectorAll('[data-action="edit-role"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                editUserRole(this.getAttribute('data-user-id'), this.getAttribute('data-user-role'));
+            });
+        });
+
+        tbody.querySelectorAll('[data-action="delete-user"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                deleteUser(this.getAttribute('data-user-id'));
+            });
+        });
+
+    } catch (error) {
+        showToast('Erreur de connexion au serveur', 'error');
+    }
 }
 
-function getCategoryLabel(category) {
-    const labels = {
-        'social': 'Réseaux sociaux',
-        'email': 'Email',
-        'banking': 'Banque',
-        'work': 'Travail',
-        'shopping': 'Shopping',
-        'other': 'Autre'
-    };
-    return labels[category] || category;
+/**
+ * Ouvre la modale pour modifier le rôle d'un utilisateur
+ */
+function editUserRole(userId, currentRole) {
+    document.getElementById('role-user-id').value = userId;
+    document.getElementById('role-select').value = currentRole;
+    showModal('role-modal');
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+/**
+ * Met à jour le rôle d'un utilisateur
+ */
+async function updateUserRole(event) {
+    event.preventDefault();
+
+    var userId = document.getElementById('role-user-id').value;
+    var role = document.getElementById('role-select').value;
+
+    try {
+        var response = await fetch(API_URL + '/auth/users/' + userId + '/role', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ role: role })
+        });
+
+        var data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Erreur lors de la mise à jour', 'error');
+            return;
+        }
+
+        closeModal('role-modal');
+        loadUsers();
+        showToast('Rôle mis à jour', 'success');
+
+    } catch (error) {
+        showToast('Erreur de connexion au serveur', 'error');
+    }
 }
 
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
+/**
+ * Supprime un utilisateur (admin uniquement)
+ */
+async function deleteUser(userId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+        return;
+    }
+
+    try {
+        var response = await fetch(API_URL + '/auth/users/' + userId, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        var data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Erreur lors de la suppression', 'error');
+            return;
+        }
+
+        loadUsers();
+        showToast('Utilisateur supprimé', 'success');
+
+    } catch (error) {
+        showToast('Erreur de connexion au serveur', 'error');
+    }
+}
+
+// ============================================
+// UTILITAIRES
+// ============================================
+
+/**
+ * Affiche un message d'erreur dans un élément HTML
+ */
+function showError(element, message) {
+    if (element) {
+        element.textContent = message;
+        element.style.display = 'block';
+    }
+}
+
+/**
+ * Affiche une notification toast
+ */
+function showToast(message, type) {
+    var toast = document.getElementById('toast');
     toast.textContent = message;
-    toast.className = `toast toast-${type} show`;
+    toast.className = 'toast toast-' + (type || 'info') + ' show';
 
-    setTimeout(() => {
+    setTimeout(function() {
         toast.classList.remove('show');
     }, 3000);
 }
 
-// Close modals when clicking outside
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-        event.target.style.display = 'none';
-    }
-}
-
-// Close modals with Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.style.display = 'none';
-        });
-    }
-});
-
-// Dashboard Generator Functions
-function showGeneratorSection() {
-    document.getElementById('generator-dashboard-modal').style.display = 'flex';
-    generateDashboardPasswords();
-}
-
-function closeGeneratorDashboardModal() {
-    document.getElementById('generator-dashboard-modal').style.display = 'none';
-}
-
-function switchDashboardGeneratorTab(mode) {
-    // Update tab active state
-    document.querySelectorAll('#generator-dashboard-modal .generator-tab').forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.tab === mode) {
-            tab.classList.add('active');
-        }
-    });
-
-    // Show/hide generator content
-    document.querySelectorAll('#generator-dashboard-modal .generator-content').forEach(content => {
-        content.classList.remove('active');
-    });
-
-    if (mode === 'random') {
-        document.getElementById('dashboard-random-generator').classList.add('active');
-        generateDashboardPasswords();
-    } else {
-        document.getElementById('dashboard-memorable-generator').classList.add('active');
-        generateDashboardMemorablePasswords();
-    }
-}
-
-function updateDashboardRandomLength(value) {
-    document.getElementById('dashboard-random-length-value').textContent = value;
-    generateDashboardPasswords();
-}
-
-function updateDashboardMemorableWords(value) {
-    document.getElementById('dashboard-memorable-words-value').textContent = value;
-    generateDashboardMemorablePasswords();
-}
-
-async function generateDashboardPasswords() {
-    const length = parseInt(document.getElementById('dashboard-random-length').value);
-    const useUppercase = document.getElementById('dashboard-random-uppercase').checked;
-    const useLowercase = document.getElementById('dashboard-random-lowercase').checked;
-    const useNumbers = document.getElementById('dashboard-random-numbers').checked;
-    const useSymbols = document.getElementById('dashboard-random-symbols').checked;
-
-    const options = {
-        mode: 'random',
-        length,
-        includeUppercase: useUppercase,
-        includeLowercase: useLowercase,
-        includeNumbers: useNumbers,
-        includeSymbols: useSymbols
-    };
-
-    try {
-        const response = await fetch(`${API_URL}/generator/multiple`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': authToken ? `Bearer ${authToken}` : ''
-            },
-            body: JSON.stringify(options)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            displayPasswordSuggestions(data.passwords, 'dashboard-password-suggestions-list');
-        }
-    } catch (error) {
-        console.error('Error generating passwords:', error);
-    }
-}
-
-async function generateDashboardMemorablePasswords() {
-    const wordCount = parseInt(document.getElementById('dashboard-memorable-words').value);
-    const separator = document.getElementById('dashboard-memorable-separator').value;
-    const capitalizeWords = document.getElementById('dashboard-memorable-capitalize').checked;
-    const includeNumbers = document.getElementById('dashboard-memorable-numbers').checked;
-
-    const options = {
-        mode: 'memorable',
-        wordCount,
-        separator,
-        capitalizeWords,
-        includeNumbers
-    };
-
-    try {
-        const response = await fetch(`${API_URL}/generator/multiple`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': authToken ? `Bearer ${authToken}` : ''
-            },
-            body: JSON.stringify(options)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            displayPasswordSuggestions(data.passwords, 'dashboard-memorable-suggestions-list');
-        }
-    } catch (error) {
-        console.error('Error generating memorable passwords:', error);
-    }
+/**
+ * Échappe les caractères HTML pour prévenir les attaques XSS
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

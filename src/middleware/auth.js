@@ -1,19 +1,39 @@
+/**
+ * Middleware d'Authentification
+ * Vérifie le token JWT depuis le cookie HTTP-only et ajoute l'ID utilisateur à la requête
+ *
+ * SÉCURITÉ : Le token est lu depuis un cookie HTTP-only, pas depuis le header Authorization
+ * Cela protège contre les attaques XSS car JavaScript ne peut pas accéder au cookie
+ */
+
 const { verifyToken } = require('../utils/jwt');
 
+/**
+ * Middleware qui vérifie la présence et la validité du token JWT dans le cookie
+ * Ajoute req.userId si le token est valide
+ */
 const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Récupérer le token depuis le cookie
+    const token = req.cookies.token;
 
-  if (!token) {
-    return res.status(401).json({ message: 'Access denied. No token provided.' });
-  }
+    if (!token) {
+        return res.status(401).json({
+            error: 'Accès refusé. Veuillez vous connecter.'
+        });
+    }
 
-  const decoded = verifyToken(token, process.env.JWT_SECRET);
-  if (!decoded) {
-    return res.status(401).json({ message: 'Invalid or expired token.' });
-  }
+    // Vérifier le token
+    const decoded = verifyToken(token);
 
-  req.userId = decoded.userId;
-  next();
+    if (!decoded) {
+        return res.status(401).json({
+            error: 'Session expirée. Veuillez vous reconnecter.'
+        });
+    }
+
+    // Ajouter l'ID utilisateur à la requête pour les routes suivantes
+    req.userId = decoded.userId;
+    next();
 };
 
 module.exports = authMiddleware;
