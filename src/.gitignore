@@ -44,7 +44,6 @@ Thumbs.db
 # Database
 *.db
 *.sqlite
-data/
 
 # Test
 test-results/
