@@ -1,46 +1,46 @@
 /**
- * Application de Gestion de Comptes Utilisateurs
- * Projet Programmation Sécurisée - ESAIP
+ * User Account Management Application
+ * Secure Programming Project - ESAIP
  *
- * Ce fichier gère la logique frontend de l'application :
- * - Authentification (connexion/inscription)
- * - Gestion du profil utilisateur
- * - Administration des utilisateurs (pour les admins)
+ * This file handles the frontend logic of the application:
+ * - Authentication (login/registration)
+ * - User profile management
+ * - User administration (for admins)
  *
- * SÉCURITÉ : Le token JWT est stocké dans un cookie HTTP-only côté serveur.
- * Le frontend ne manipule plus le token directement, ce qui protège contre les attaques XSS.
+ * SECURITY: The JWT token is stored in an HTTP-only cookie server-side.
+ * The frontend does not handle the token directly, which protects against XSS attacks.
  */
 
-// Configuration de l'API
+// API configuration
 const API_URL = '/api';
 
-// État de l'application (l'utilisateur connecté)
+// Application state (logged-in user)
 let currentUser = null;
 
 // ============================================
-// INITIALISATION
+// INITIALIZATION
 // ============================================
 
 /**
- * Initialise l'application au chargement de la page
- * Vérifie si une session est active en appelant /api/auth/me
+ * Initializes the application on page load
+ * Checks for an active session by calling /api/auth/me
  */
 document.addEventListener('DOMContentLoaded', function() {
-    // Attacher les événements aux boutons
+    // Attach events to buttons
     initEventListeners();
 
-    // Vérifier si l'utilisateur a une session active (cookie valide)
+    // Check if the user has an active session (valid cookie)
     checkSession();
 });
 
 /**
- * Vérifie si l'utilisateur a une session active
- * Le serveur vérifie le cookie HTTP-only et renvoie les infos utilisateur
+ * Checks if the user has an active session
+ * The server verifies the HTTP-only cookie and returns the user info
  */
 async function checkSession() {
     try {
         var response = await fetch(API_URL + '/auth/me', {
-            credentials: 'include' // Inclure les cookies dans la requête
+            credentials: 'include' // Include cookies in the request
         });
 
         if (response.ok) {
@@ -48,18 +48,18 @@ async function checkSession() {
             currentUser = data.user;
             showDashboard();
         }
-        // Si pas de session valide, on reste sur la page publique
+        // If no valid session, stay on the public page
     } catch (error) {
-        // Erreur réseau, on reste sur la page publique
-        console.log('Pas de session active');
+        // Network error, stay on the public page
+        console.log('No active session');
     }
 }
 
 /**
- * Initialise tous les écouteurs d'événements
+ * Initializes all event listeners
  */
 function initEventListeners() {
-    // Boutons de la navbar
+    // Navbar buttons
     document.getElementById('btn-login').addEventListener('click', function() {
         showModal('login-modal');
     });
@@ -70,14 +70,14 @@ function initEventListeners() {
 
     document.getElementById('btn-logout').addEventListener('click', logout);
 
-    // Formulaires
+    // Forms
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('register-form').addEventListener('submit', handleRegister);
     document.getElementById('profile-form').addEventListener('submit', updateProfile);
     document.getElementById('password-form').addEventListener('submit', changePassword);
     document.getElementById('role-form').addEventListener('submit', updateUserRole);
 
-    // Boutons de fermeture des modales
+    // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var modal = this.closest('.modal');
@@ -87,7 +87,7 @@ function initEventListeners() {
         });
     });
 
-    // Liens dans les modales
+    // Modal links
     document.getElementById('link-to-register').addEventListener('click', function(e) {
         e.preventDefault();
         closeModal('login-modal');
@@ -100,7 +100,7 @@ function initEventListeners() {
         showModal('login-modal');
     });
 
-    // Navigation sidebar
+    // Sidebar navigation
     document.getElementById('nav-profile').addEventListener('click', function(e) {
         e.preventDefault();
         showView('profile', this);
@@ -116,7 +116,7 @@ function initEventListeners() {
         showView('users', this);
     });
 
-    // Fermer la modale en cliquant à l'extérieur
+    // Close modal by clicking outside
     document.querySelectorAll('.modal').forEach(function(modal) {
         modal.addEventListener('click', function(e) {
             if (e.target === this) {
@@ -125,7 +125,7 @@ function initEventListeners() {
         });
     });
 
-    // Fermer les modales avec Escape
+    // Close modals with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             document.querySelectorAll('.modal.show').forEach(function(modal) {
@@ -136,11 +136,11 @@ function initEventListeners() {
 }
 
 // ============================================
-// GESTION DES MODALES
+// MODAL MANAGEMENT
 // ============================================
 
 /**
- * Affiche une modale par son ID
+ * Shows a modal by its ID
  */
 function showModal(modalId) {
     var modal = document.getElementById(modalId);
@@ -150,7 +150,7 @@ function showModal(modalId) {
 }
 
 /**
- * Ferme une modale par son ID
+ * Closes a modal by its ID
  */
 function closeModal(modalId) {
     var modal = document.getElementById(modalId);
@@ -164,12 +164,12 @@ function closeModal(modalId) {
 }
 
 // ============================================
-// AUTHENTIFICATION
+// AUTHENTICATION
 // ============================================
 
 /**
- * Gère la soumission du formulaire de connexion
- * Le token est stocké dans un cookie HTTP-only par le serveur
+ * Handles the login form submission
+ * The token is stored in an HTTP-only cookie by the server
  */
 async function handleLogin(event) {
     event.preventDefault();
@@ -179,7 +179,7 @@ async function handleLogin(event) {
     var errorDiv = document.getElementById('login-error');
 
     if (!email || !password) {
-        showError(errorDiv, 'Veuillez remplir tous les champs');
+        showError(errorDiv, 'Please fill in all fields');
         return;
     }
 
@@ -189,33 +189,33 @@ async function handleLogin(event) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include', // Permet au serveur de définir le cookie
+            credentials: 'include', // Allows the server to set the cookie
             body: JSON.stringify({ email: email, password: password })
         });
 
         var data = await response.json();
 
         if (!response.ok) {
-            showError(errorDiv, data.error || 'Identifiants incorrects');
+            showError(errorDiv, data.error || 'Invalid credentials');
             return;
         }
 
-        // Le token est maintenant dans un cookie HTTP-only
-        // On stocke uniquement les infos utilisateur (pas sensibles)
+        // The token is now in an HTTP-only cookie
+        // We only store non-sensitive user info
         currentUser = data.user;
 
         closeModal('login-modal');
         showDashboard();
-        showToast('Connexion réussie', 'success');
+        showToast('Login successful', 'success');
 
     } catch (error) {
-        showError(errorDiv, 'Erreur de connexion au serveur');
+        showError(errorDiv, 'Server connection error');
     }
 }
 
 /**
- * Gère la soumission du formulaire d'inscription
- * Le token est stocké dans un cookie HTTP-only par le serveur
+ * Handles the registration form submission
+ * The token is stored in an HTTP-only cookie by the server
  */
 async function handleRegister(event) {
     event.preventDefault();
@@ -227,17 +227,17 @@ async function handleRegister(event) {
     var errorDiv = document.getElementById('register-error');
 
     if (!name || !email || !password || !confirm) {
-        showError(errorDiv, 'Veuillez remplir tous les champs');
+        showError(errorDiv, 'Please fill in all fields');
         return;
     }
 
     if (password.length < 8) {
-        showError(errorDiv, 'Le mot de passe doit contenir au moins 8 caractères');
+        showError(errorDiv, 'Password must be at least 8 characters long');
         return;
     }
 
     if (password !== confirm) {
-        showError(errorDiv, 'Les mots de passe ne correspondent pas');
+        showError(errorDiv, 'Passwords do not match');
         return;
     }
 
@@ -247,41 +247,41 @@ async function handleRegister(event) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include', // Permet au serveur de définir le cookie
+            credentials: 'include', // Allows the server to set the cookie
             body: JSON.stringify({ name: name, email: email, password: password })
         });
 
         var data = await response.json();
 
         if (!response.ok) {
-            showError(errorDiv, data.error || 'Erreur lors de l\'inscription');
+            showError(errorDiv, data.error || 'Registration error');
             return;
         }
 
-        // Le token est maintenant dans un cookie HTTP-only
+        // The token is now in an HTTP-only cookie
         currentUser = data.user;
 
         closeModal('register-modal');
         showDashboard();
-        showToast('Compte créé avec succès', 'success');
+        showToast('Account created successfully', 'success');
 
     } catch (error) {
-        showError(errorDiv, 'Erreur de connexion au serveur');
+        showError(errorDiv, 'Server connection error');
     }
 }
 
 /**
- * Déconnecte l'utilisateur
- * Appelle le serveur pour supprimer le cookie HTTP-only
+ * Logs out the user
+ * Calls the server to delete the HTTP-only cookie
  */
 async function logout() {
     try {
         await fetch(API_URL + '/auth/logout', {
             method: 'POST',
-            credentials: 'include' // Envoie le cookie au serveur pour suppression
+            credentials: 'include' // Sends the cookie to the server for deletion
         });
     } catch (error) {
-        // Même en cas d'erreur, on déconnecte côté client
+        // Even on error, log out client-side
     }
 
     currentUser = null;
@@ -291,15 +291,15 @@ async function logout() {
     document.getElementById('auth-buttons').style.display = 'flex';
     document.getElementById('user-nav').style.display = 'none';
 
-    showToast('Déconnexion réussie', 'success');
+    showToast('Logged out successfully', 'success');
 }
 
 // ============================================
-// INTERFACE UTILISATEUR
+// USER INTERFACE
 // ============================================
 
 /**
- * Affiche le tableau de bord après connexion
+ * Shows the dashboard after login
  */
 function showDashboard() {
     document.getElementById('public-section').style.display = 'none';
@@ -324,21 +324,21 @@ function showDashboard() {
 }
 
 /**
- * Affiche une vue spécifique dans le dashboard
+ * Shows a specific view in the dashboard
  */
 function showView(viewName, clickedLink) {
-    // Masquer toutes les vues
+    // Hide all views
     document.querySelectorAll('.view').forEach(function(view) {
         view.style.display = 'none';
     });
 
-    // Afficher la vue demandée
+    // Show the requested view
     var view = document.getElementById('view-' + viewName);
     if (view) {
         view.style.display = 'block';
     }
 
-    // Mettre à jour le menu actif
+    // Update the active menu item
     document.querySelectorAll('.sidebar-menu a').forEach(function(link) {
         link.classList.remove('active');
     });
@@ -346,7 +346,7 @@ function showView(viewName, clickedLink) {
         clickedLink.classList.add('active');
     }
 
-    // Charger les données selon la vue
+    // Load data based on view
     if (viewName === 'users' && currentUser.role === 'admin') {
         loadUsers();
     } else if (viewName === 'security') {
@@ -355,11 +355,11 @@ function showView(viewName, clickedLink) {
 }
 
 // ============================================
-// GESTION DU PROFIL
+// PROFILE MANAGEMENT
 // ============================================
 
 /**
- * Charge et affiche les informations du profil utilisateur
+ * Loads and displays user profile information
  */
 function loadProfile() {
     document.getElementById('profile-name').textContent = currentUser.name;
@@ -371,7 +371,7 @@ function loadProfile() {
 }
 
 /**
- * Met à jour les informations du profil utilisateur
+ * Updates the user profile information
  */
 async function updateProfile(event) {
     event.preventDefault();
@@ -380,7 +380,7 @@ async function updateProfile(event) {
     var email = document.getElementById('profile-email-input').value.trim();
 
     if (!name || !email) {
-        showToast('Veuillez remplir tous les champs', 'error');
+        showToast('Please fill in all fields', 'error');
         return;
     }
 
@@ -390,14 +390,14 @@ async function updateProfile(event) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include', // Envoie le cookie d'authentification
+            credentials: 'include', // Sends the authentication cookie
             body: JSON.stringify({ name: name, email: email })
         });
 
         var data = await response.json();
 
         if (!response.ok) {
-            showToast(data.error || 'Erreur lors de la mise à jour', 'error');
+            showToast(data.error || 'Update error', 'error');
             return;
         }
 
@@ -407,32 +407,32 @@ async function updateProfile(event) {
         loadProfile();
         document.getElementById('user-display-name').textContent = name;
 
-        showToast('Profil mis à jour', 'success');
+        showToast('Profile updated', 'success');
 
     } catch (error) {
-        showToast('Erreur de connexion au serveur', 'error');
+        showToast('Server connection error', 'error');
     }
 }
 
 /**
- * Charge les informations de sécurité du compte
+ * Loads the account security information
  */
 function loadSecurityInfo() {
     if (currentUser.createdAt) {
         var date = new Date(currentUser.createdAt);
-        document.getElementById('account-created').textContent = date.toLocaleDateString('fr-FR');
+        document.getElementById('account-created').textContent = date.toLocaleDateString('en-US');
     }
 
     if (currentUser.lastLogin) {
         var date = new Date(currentUser.lastLogin);
-        document.getElementById('last-login').textContent = date.toLocaleString('fr-FR');
+        document.getElementById('last-login').textContent = date.toLocaleString('en-US');
     } else {
-        document.getElementById('last-login').textContent = 'Première connexion';
+        document.getElementById('last-login').textContent = 'First login';
     }
 }
 
 /**
- * Change le mot de passe de l'utilisateur
+ * Changes the user's password
  */
 async function changePassword(event) {
     event.preventDefault();
@@ -442,17 +442,17 @@ async function changePassword(event) {
     var confirmPassword = document.getElementById('confirm-password').value;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-        showToast('Veuillez remplir tous les champs', 'error');
+        showToast('Please fill in all fields', 'error');
         return;
     }
 
     if (newPassword.length < 8) {
-        showToast('Le nouveau mot de passe doit contenir au moins 8 caractères', 'error');
+        showToast('New password must be at least 8 characters long', 'error');
         return;
     }
 
     if (newPassword !== confirmPassword) {
-        showToast('Les nouveaux mots de passe ne correspondent pas', 'error');
+        showToast('New passwords do not match', 'error');
         return;
     }
 
@@ -469,24 +469,24 @@ async function changePassword(event) {
         var data = await response.json();
 
         if (!response.ok) {
-            showToast(data.error || 'Erreur lors du changement de mot de passe', 'error');
+            showToast(data.error || 'Password change error', 'error');
             return;
         }
 
         document.getElementById('password-form').reset();
-        showToast('Mot de passe modifié avec succès', 'success');
+        showToast('Password changed successfully', 'success');
 
     } catch (error) {
-        showToast('Erreur de connexion au serveur', 'error');
+        showToast('Server connection error', 'error');
     }
 }
 
 // ============================================
-// ADMINISTRATION - GESTION DES UTILISATEURS
+// ADMINISTRATION - USER MANAGEMENT
 // ============================================
 
 /**
- * Charge la liste de tous les utilisateurs (admin uniquement)
+ * Loads the list of all users (admin only)
  */
 async function loadUsers() {
     try {
@@ -497,7 +497,7 @@ async function loadUsers() {
         var data = await response.json();
 
         if (!response.ok) {
-            showToast(data.error || 'Erreur lors du chargement', 'error');
+            showToast(data.error || 'Loading error', 'error');
             return;
         }
 
@@ -522,19 +522,19 @@ async function loadUsers() {
             html += '<tr>';
             html += '<td>' + escapeHtml(user.name) + '</td>';
             html += '<td>' + escapeHtml(user.email) + '</td>';
-            html += '<td><span class="badge badge-' + user.role + '">' + (user.role === 'admin' ? 'Admin' : 'Utilisateur') + '</span></td>';
-            html += '<td>' + new Date(user.createdAt).toLocaleDateString('fr-FR') + '</td>';
+            html += '<td><span class="badge badge-' + user.role + '">' + (user.role === 'admin' ? 'Admin' : 'User') + '</span></td>';
+            html += '<td>' + new Date(user.createdAt).toLocaleDateString('en-US') + '</td>';
             html += '<td class="table-actions">';
-            html += '<button class="btn btn-sm btn-secondary" data-action="edit-role" data-user-id="' + user.id + '" data-user-role="' + user.role + '">Modifier rôle</button>';
+            html += '<button class="btn btn-sm btn-secondary" data-action="edit-role" data-user-id="' + user.id + '" data-user-role="' + user.role + '">Edit role</button>';
             if (user.id !== currentUser.id) {
-                html += ' <button class="btn btn-sm btn-danger" data-action="delete-user" data-user-id="' + user.id + '">Supprimer</button>';
+                html += ' <button class="btn btn-sm btn-danger" data-action="delete-user" data-user-id="' + user.id + '">Delete</button>';
             }
             html += '</td>';
             html += '</tr>';
         });
         tbody.innerHTML = html;
 
-        // Attacher les événements aux boutons
+        // Attach events to buttons
         tbody.querySelectorAll('[data-action="edit-role"]').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 editUserRole(this.getAttribute('data-user-id'), this.getAttribute('data-user-role'));
@@ -548,12 +548,12 @@ async function loadUsers() {
         });
 
     } catch (error) {
-        showToast('Erreur de connexion au serveur', 'error');
+        showToast('Server connection error', 'error');
     }
 }
 
 /**
- * Ouvre la modale pour modifier le rôle d'un utilisateur
+ * Opens the modal to edit a user's role
  */
 function editUserRole(userId, currentRole) {
     document.getElementById('role-user-id').value = userId;
@@ -562,7 +562,7 @@ function editUserRole(userId, currentRole) {
 }
 
 /**
- * Met à jour le rôle d'un utilisateur
+ * Updates a user's role
  */
 async function updateUserRole(event) {
     event.preventDefault();
@@ -583,24 +583,24 @@ async function updateUserRole(event) {
         var data = await response.json();
 
         if (!response.ok) {
-            showToast(data.error || 'Erreur lors de la mise à jour', 'error');
+            showToast(data.error || 'Update error', 'error');
             return;
         }
 
         closeModal('role-modal');
         loadUsers();
-        showToast('Rôle mis à jour', 'success');
+        showToast('Role updated', 'success');
 
     } catch (error) {
-        showToast('Erreur de connexion au serveur', 'error');
+        showToast('Server connection error', 'error');
     }
 }
 
 /**
- * Supprime un utilisateur (admin uniquement)
+ * Deletes a user (admin only)
  */
 async function deleteUser(userId) {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+    if (!confirm('Are you sure you want to delete this user?')) {
         return;
     }
 
@@ -613,24 +613,24 @@ async function deleteUser(userId) {
         var data = await response.json();
 
         if (!response.ok) {
-            showToast(data.error || 'Erreur lors de la suppression', 'error');
+            showToast(data.error || 'Deletion error', 'error');
             return;
         }
 
         loadUsers();
-        showToast('Utilisateur supprimé', 'success');
+        showToast('User deleted', 'success');
 
     } catch (error) {
-        showToast('Erreur de connexion au serveur', 'error');
+        showToast('Server connection error', 'error');
     }
 }
 
 // ============================================
-// UTILITAIRES
+// UTILITIES
 // ============================================
 
 /**
- * Affiche un message d'erreur dans un élément HTML
+ * Displays an error message in an HTML element
  */
 function showError(element, message) {
     if (element) {
@@ -640,7 +640,7 @@ function showError(element, message) {
 }
 
 /**
- * Affiche une notification toast
+ * Displays a toast notification
  */
 function showToast(message, type) {
     var toast = document.getElementById('toast');
@@ -653,7 +653,7 @@ function showToast(message, type) {
 }
 
 /**
- * Échappe les caractères HTML pour prévenir les attaques XSS
+ * Escapes HTML characters to prevent XSS attacks
  */
 function escapeHtml(text) {
     if (!text) return '';

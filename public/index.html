@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Application de gestion de comptes utilisateurs sécurisée">
-    <title>Gestion de Comptes - Projet Sécurité</title>
+    <meta name="description" content="Secure user account management application">
+    <title>Account Management - Security Project</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <!-- Barre de navigation -->
+    <!-- Navigation bar -->
     <nav class="navbar">
         <div class="navbar-container">
             <a href="/" class="navbar-brand">
@@ -18,51 +18,51 @@
                 <span>SecureApp</span>
             </a>
             <div class="navbar-actions">
-                <!-- Affiché quand déconnecté -->
+                <!-- Shown when logged out -->
                 <div id="auth-buttons">
-                    <button id="btn-login" class="btn btn-secondary">Connexion</button>
-                    <button id="btn-register" class="btn btn-primary">Inscription</button>
+                    <button id="btn-login" class="btn btn-secondary">Login</button>
+                    <button id="btn-register" class="btn btn-primary">Register</button>
                 </div>
-                <!-- Affiché quand connecté -->
+                <!-- Shown when logged in -->
                 <div id="user-nav" style="display: none;">
                     <div class="user-info">
-                        <span id="user-display-name">Utilisateur</span>
+                        <span id="user-display-name">User</span>
                         <span id="user-role-badge" class="user-role user">USER</span>
                     </div>
-                    <button id="btn-logout" class="btn btn-secondary">Déconnexion</button>
+                    <button id="btn-logout" class="btn btn-secondary">Logout</button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Section publique (page d'accueil non connecté) -->
+    <!-- Public section (home page, not logged in) -->
     <section id="public-section" class="public-section">
-        <h1>Bienvenue sur SecureApp</h1>
-        <p>Application de gestion de comptes utilisateurs sécurisée.<br>
-        Inscrivez-vous ou connectez-vous pour accéder à votre espace personnel.</p>
+        <h1>Welcome to SecureApp</h1>
+        <p>Secure user account management application.<br>
+        Register or log in to access your personal space.</p>
 
         <div class="card" style="text-align: left; max-width: 500px; margin: 0 auto;">
             <div class="card-header">
-                <h2>Fonctionnalités</h2>
+                <h2>Features</h2>
             </div>
             <ul style="list-style: none; padding: 0;">
                 <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                    Inscription et authentification sécurisée
+                    Secure registration and authentication
                 </li>
                 <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                    Espace personnel protégé
+                    Protected personal space
                 </li>
                 <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                    Gestion des rôles (Utilisateur / Admin)
+                    Role management (User / Admin)
                 </li>
                 <li style="padding: 8px 0;">
-                    Modification du profil et mot de passe
+                    Profile and password management
                 </li>
             </ul>
         </div>
     </section>
 
-    <!-- Dashboard (affiché quand connecté) -->
+    <!-- Dashboard (shown when logged in) -->
     <section id="dashboard-section" class="container" style="display: none;">
         <div class="dashboard">
             <!-- Sidebar -->
@@ -74,7 +74,7 @@
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
                             </svg>
-                            Mon Profil
+                            My Profile
                         </a>
                     </li>
                     <li>
@@ -83,12 +83,12 @@
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
-                            Sécurité
+                            Security
                         </a>
                     </li>
                 </ul>
 
-                <!-- Menu Admin (visible uniquement pour les admins) -->
+                <!-- Admin menu (visible for admins only) -->
                 <div id="admin-menu" class="sidebar-section" style="display: none;">
                     <h3>Administration</h3>
                     <ul class="sidebar-menu">
@@ -100,33 +100,33 @@
                                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                 </svg>
-                                Gérer les utilisateurs
+                                Manage Users
                             </a>
                         </li>
                     </ul>
                 </div>
             </aside>
 
-            <!-- Contenu principal -->
+            <!-- Main content -->
             <main class="main-content">
-                <!-- Vue Profil -->
+                <!-- Profile view -->
                 <div id="view-profile" class="view">
                     <div class="main-header">
-                        <h1>Mon Profil</h1>
+                        <h1>My Profile</h1>
                     </div>
 
                     <div class="profile-section">
                         <div class="profile-header">
                             <div class="profile-avatar" id="profile-avatar">U</div>
                             <div class="profile-info">
-                                <h2 id="profile-name">Nom de l'utilisateur</h2>
-                                <p id="profile-email">email@exemple.com</p>
+                                <h2 id="profile-name">Username</h2>
+                                <p id="profile-email">email@example.com</p>
                             </div>
                         </div>
 
                         <form id="profile-form">
                             <div class="form-group">
-                                <label for="profile-name-input">Nom</label>
+                                <label for="profile-name-input">Name</label>
                                 <input type="text" id="profile-name-input" required>
                             </div>
                             <div class="form-group">
@@ -134,50 +134,50 @@
                                 <input type="email" id="profile-email-input" required>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                                <button type="submit" class="btn btn-primary">Save changes</button>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- Vue Sécurité -->
+                <!-- Security view -->
                 <div id="view-security" class="view" style="display: none;">
                     <div class="main-header">
-                        <h1>Sécurité du compte</h1>
+                        <h1>Account Security</h1>
                     </div>
 
                     <div class="profile-section">
-                        <h3>Changer le mot de passe</h3>
+                        <h3>Change Password</h3>
                         <form id="password-form" style="margin-top: 16px;">
                             <div class="form-group">
-                                <label for="current-password">Mot de passe actuel</label>
+                                <label for="current-password">Current password</label>
                                 <input type="password" id="current-password" required>
                             </div>
                             <div class="form-group">
-                                <label for="new-password">Nouveau mot de passe</label>
+                                <label for="new-password">New password</label>
                                 <input type="password" id="new-password" required minlength="8">
-                                <small>Minimum 8 caractères</small>
+                                <small>Minimum 8 characters</small>
                             </div>
                             <div class="form-group">
-                                <label for="confirm-password">Confirmer le nouveau mot de passe</label>
+                                <label for="confirm-password">Confirm new password</label>
                                 <input type="password" id="confirm-password" required>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">Modifier le mot de passe</button>
+                                <button type="submit" class="btn btn-primary">Change password</button>
                             </div>
                         </form>
 
                         <div class="security-section">
-                            <h3>Informations de sécurité</h3>
+                            <h3>Security Information</h3>
                             <div class="security-item">
                                 <div class="security-item-info">
-                                    <h4>Dernière connexion</h4>
+                                    <h4>Last login</h4>
                                     <p id="last-login">-</p>
                                 </div>
                             </div>
                             <div class="security-item">
                                 <div class="security-item-info">
-                                    <h4>Compte créé le</h4>
+                                    <h4>Account created on</h4>
                                     <p id="account-created">-</p>
                                 </div>
                             </div>
@@ -185,16 +185,16 @@
                     </div>
                 </div>
 
-                <!-- Vue Admin - Gestion des utilisateurs -->
+                <!-- Admin view - User management -->
                 <div id="view-users" class="view" style="display: none;">
                     <div class="main-header">
-                        <h1>Gestion des utilisateurs</h1>
+                        <h1>User Management</h1>
                     </div>
 
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-value" id="stat-total-users">0</div>
-                            <div class="stat-label">Utilisateurs</div>
+                            <div class="stat-label">Users</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-value" id="stat-admin-users">0</div>
@@ -206,15 +206,15 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Nom</th>
+                                    <th>Name</th>
                                     <th>Email</th>
-                                    <th>Rôle</th>
-                                    <th>Date inscription</th>
+                                    <th>Role</th>
+                                    <th>Registration date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body">
-                                <!-- Les utilisateurs seront chargés ici -->
+                                <!-- Users will be loaded here -->
                             </tbody>
                         </table>
                     </div>
@@ -224,19 +224,19 @@
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                             <circle cx="9" cy="7" r="4"></circle>
                         </svg>
-                        <h3>Aucun utilisateur</h3>
-                        <p>Il n'y a pas encore d'utilisateurs inscrits.</p>
+                        <h3>No users</h3>
+                        <p>There are no registered users yet.</p>
                     </div>
                 </div>
             </main>
         </div>
     </section>
 
-    <!-- Modal Connexion -->
+    <!-- Login Modal -->
     <div id="login-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Connexion</h2>
+                <h2>Login</h2>
                 <button class="modal-close">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -251,24 +251,24 @@
                     <input type="email" id="login-email" required autocomplete="email">
                 </div>
                 <div class="form-group">
-                    <label for="login-password">Mot de passe</label>
+                    <label for="login-password">Password</label>
                     <input type="password" id="login-password" required autocomplete="current-password">
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+                    <button type="submit" class="btn btn-primary btn-block">Sign in</button>
                 </div>
             </form>
             <div class="modal-footer">
-                Pas encore de compte ? <a href="#" id="link-to-register">Inscrivez-vous</a>
+                No account yet? <a href="#" id="link-to-register">Sign up</a>
             </div>
         </div>
     </div>
 
-    <!-- Modal Inscription -->
+    <!-- Register Modal -->
     <div id="register-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Inscription</h2>
+                <h2>Register</h2>
                 <button class="modal-close">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -279,7 +279,7 @@
             <form id="register-form">
                 <div id="register-error" class="alert alert-error" style="display: none;"></div>
                 <div class="form-group">
-                    <label for="register-name">Nom</label>
+                    <label for="register-name">Name</label>
                     <input type="text" id="register-name" required>
                 </div>
                 <div class="form-group">
@@ -287,29 +287,29 @@
                     <input type="email" id="register-email" required autocomplete="email">
                 </div>
                 <div class="form-group">
-                    <label for="register-password">Mot de passe</label>
+                    <label for="register-password">Password</label>
                     <input type="password" id="register-password" required minlength="8" autocomplete="new-password">
-                    <small>Minimum 8 caractères</small>
+                    <small>Minimum 8 characters</small>
                 </div>
                 <div class="form-group">
-                    <label for="register-confirm">Confirmer le mot de passe</label>
+                    <label for="register-confirm">Confirm password</label>
                     <input type="password" id="register-confirm" required autocomplete="new-password">
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary btn-block">Créer mon compte</button>
+                    <button type="submit" class="btn btn-primary btn-block">Create account</button>
                 </div>
             </form>
             <div class="modal-footer">
-                Déjà un compte ? <a href="#" id="link-to-login">Connectez-vous</a>
+                Already have an account? <a href="#" id="link-to-login">Sign in</a>
             </div>
         </div>
     </div>
 
-    <!-- Modal Modifier le rôle (Admin) -->
+    <!-- Edit Role Modal (Admin) -->
     <div id="role-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Modifier le rôle</h2>
+                <h2>Edit Role</h2>
                 <button class="modal-close">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -320,14 +320,14 @@
             <form id="role-form">
                 <input type="hidden" id="role-user-id">
                 <div class="form-group">
-                    <label for="role-select">Rôle</label>
+                    <label for="role-select">Role</label>
                     <select id="role-select">
-                        <option value="user">Utilisateur</option>
-                        <option value="admin">Administrateur</option>
+                        <option value="user">User</option>
+                        <option value="admin">Administrator</option>
                     </select>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>

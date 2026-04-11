@@ -1,48 +1,48 @@
 /**
- * Modèle Utilisateur
- * Gère les données des utilisateurs avec hashage sécurisé des mots de passe
+ * User Model
+ * Manages user data with secure password hashing
  */
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-// Définition du schéma utilisateur
+// User schema definition
 const userSchema = new mongoose.Schema({
-    // Nom de l'utilisateur
+    // User's name
     name: {
         type: String,
-        required: [true, 'Le nom est requis'],
+        required: [true, 'Name is required'],
         trim: true,
-        minlength: [2, 'Le nom doit contenir au moins 2 caractères'],
-        maxlength: [50, 'Le nom ne peut pas dépasser 50 caractères']
+        minlength: [2, 'Name must be at least 2 characters long'],
+        maxlength: [50, 'Name cannot exceed 50 characters']
     },
-    // Email unique pour l'authentification
+    // Unique email for authentication
     email: {
         type: String,
-        required: [true, 'L\'email est requis'],
+        required: [true, 'Email is required'],
         unique: true,
         lowercase: true,
         trim: true,
-        match: [/^\S+@\S+\.\S+$/, 'Format d\'email invalide']
+        match: [/^\S+@\S+\.\S+$/, 'Invalid email format']
     },
-    // Mot de passe hashé (jamais stocké en clair)
+    // Hashed password (never stored in plain text)
     password: {
         type: String,
-        required: [true, 'Le mot de passe est requis'],
-        minlength: [8, 'Le mot de passe doit contenir au moins 8 caractères']
+        required: [true, 'Password is required'],
+        minlength: [8, 'Password must be at least 8 characters long']
     },
-    // Rôle de l'utilisateur (user ou admin)
+    // User role (user or admin)
     role: {
         type: String,
         enum: ['user', 'admin'],
         default: 'user'
     },
-    // Date de création du compte
+    // Account creation date
     createdAt: {
         type: Date,
         default: Date.now
     },
-    // Date de dernière connexion
+    // Last login date
     lastLogin: {
         type: Date,
         default: null
@@ -50,17 +50,17 @@ const userSchema = new mongoose.Schema({
 });
 
 /**
- * Middleware pre-save pour hasher le mot de passe
- * Utilise bcrypt avec un facteur de coût de 12
+ * Pre-save middleware to hash the password
+ * Uses bcrypt with a cost factor of 12
  */
 userSchema.pre('save', async function(next) {
-    // Ne hasher que si le mot de passe a été modifié
+    // Only hash if the password has been modified
     if (!this.isModified('password')) {
         return next();
     }
 
     try {
-        // Hashage avec bcrypt (12 rounds = bon équilibre sécurité/performance)
+        // Hashing with bcrypt (12 rounds = good security/performance balance)
         const salt = await bcrypt.genSalt(12);
         this.password = await bcrypt.hash(this.password, salt);
         next();
@@ -70,17 +70,17 @@ userSchema.pre('save', async function(next) {
 });
 
 /**
- * Méthode pour comparer un mot de passe en clair avec le hash
- * @param {string} candidatePassword - Mot de passe à vérifier
- * @returns {Promise<boolean>} True si le mot de passe correspond
+ * Method to compare a plain text password with the hash
+ * @param {string} candidatePassword - Password to verify
+ * @returns {Promise<boolean>} True if the password matches
  */
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
 /**
- * Méthode pour retourner les données utilisateur sans le mot de passe
- * @returns {Object} Données utilisateur sécurisées
+ * Method to return user data without the password
+ * @returns {Object} Safe user data
  */
 userSchema.methods.toSafeObject = function() {
     return {

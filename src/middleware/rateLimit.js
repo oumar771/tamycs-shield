@@ -1,37 +1,37 @@
 /**
- * Middleware de Rate Limiting
- * Protège contre les attaques par force brute
+ * Rate Limiting Middleware
+ * Protects against brute-force attacks
  */
 
 const rateLimit = require('express-rate-limit');
 
 /**
- * Limiteur pour les tentatives de connexion
- * Maximum 5 tentatives par fenêtre de 15 minutes
+ * Limiter for login attempts
+ * Maximum 5 attempts per 15-minute window
  */
 const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // Fenêtre de 15 minutes
-    max: 5, // Maximum 5 tentatives
+    windowMs: 15 * 60 * 1000, // 15-minute window
+    max: 5, // Maximum 5 attempts
     message: {
-        error: 'Trop de tentatives de connexion. Veuillez réessayer dans 15 minutes.'
+        error: 'Too many login attempts. Please try again in 15 minutes.'
     },
-    standardHeaders: true, // Renvoie les infos rate limit dans les headers
+    standardHeaders: true, // Return rate limit info in headers
     legacyHeaders: false,
-    // Personnalisation de la clé (par défaut: IP)
+    // Key customization (default: IP)
     keyGenerator: (req) => {
         return req.ip;
     }
 });
 
 /**
- * Limiteur général pour l'API
- * Maximum 100 requêtes par minute
+ * General API limiter
+ * Maximum 100 requests per minute
  */
 const apiLimiter = rateLimit({
-    windowMs: 60 * 1000, // Fenêtre de 1 minute
-    max: 100, // Maximum 100 requêtes
+    windowMs: 60 * 1000, // 1-minute window
+    max: 100, // Maximum 100 requests
     message: {
-        error: 'Trop de requêtes. Veuillez patienter.'
+        error: 'Too many requests. Please wait.'
     },
     standardHeaders: true,
     legacyHeaders: false

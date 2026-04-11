@@ -1,29 +1,23 @@
-/**
- * Controller d'Authentification
- * Gère l'inscription, la connexion, la gestion du profil et l'administration des utilisateurs
- *
- * SÉCURITÉ : Le token JWT est envoyé via un cookie HTTP-only pour éviter les attaques XSS
+/*
+ * authController.js
+ * Authentication and user management
  */
 
 const User = require('../models/User');
 const { generateAccessToken } = require('../utils/jwt');
 const { validationResult } = require('express-validator');
 
-// Configuration du cookie sécurisé
+// Cookie options for the JWT token
 const COOKIE_OPTIONS = {
-    httpOnly: true,     // Empêche l'accès au cookie via JavaScript (protection XSS)
-    secure: process.env.NODE_ENV === 'production', // HTTPS uniquement en production
-    sameSite: 'strict', // Protection CSRF
-    maxAge: 24 * 60 * 60 * 1000 // 24 heures en millisecondes
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000 // 24h
 };
 
-/**
- * Inscription d'un nouvel utilisateur
- * POST /api/auth/register
- */
+// POST /api/auth/register - Registration
 exports.register = async (req, res) => {
     try {
-        // Vérifier les erreurs de validation
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ error: errors.array()[0].msg });
@@ -31,311 +25,236 @@ exports.register = async (req, res) => {
 
         const { name, email, password } = req.body;
 
-        // Vérifier si l'email existe déjà
+        // Check if email is already taken
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
-            return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+            return res.status(400).json({ error: 'This email is already in use' });
         }
 
-        // Créer le nouvel utilisateur
+        // Create the user
         const user = new User({
             name,
             email: email.toLowerCase(),
             password,
-            role: 'user' // Par défaut, tous les nouveaux utilisateurs sont des "user"
+            role: 'user'
         });
 
         await user.save();
 
-        // Générer le token JWT
+        // Token stored in an httpOnly cookie
         const token = generateAccessToken(user._id);
-
-        // Envoyer le token dans un cookie HTTP-only sécurisé
         res.cookie('token', token, COOKIE_OPTIONS);
 
-        // Retourner les données utilisateur (sans le token dans le corps)
         res.status(201).json({
-            message: 'Compte créé avec succès',
+            message: 'Account created successfully',
             user: user.toSafeObject()
         });
 
     } catch (error) {
-        console.error('Erreur lors de l\'inscription:', error);
-        res.status(500).json({ error: 'Erreur serveur lors de l\'inscription' });
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
-/**
- * Connexion d'un utilisateur
- * POST /api/auth/login
- */
+// POST /api/auth/login - Login
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Validation basique
         if (!email || !password) {
-            return res.status(400).json({ error: 'Email et mot de passe requis' });
+            return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        // Rechercher l'utilisateur par email
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
-            // Message générique pour éviter l'énumération des utilisateurs
-            return res.status(401).json({ error: 'Identifiants incorrects' });
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Vérifier le mot de passe
-        const isValidPassword = await user.comparePassword(password);
-        if (!isValidPassword) {
-            return res.status(401).json({ error: 'Identifiants incorrects' });
+        const isValid = await user.comparePassword(password);
+        if (!isValid) {
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Mettre à jour la date de dernière connexion
+        // Update last login
         user.lastLogin = new Date();
         await user.save();
 
-        // Générer le token JWT
         const token = generateAccessToken(user._id);
-
-        // Envoyer le token dans un cookie HTTP-only sécurisé
         res.cookie('token', token, COOKIE_OPTIONS);
 
-        // Retourner les données utilisateur (sans le token dans le corps)
         res.json({
-            message: 'Connexion réussie',
+            message: 'Login successful',
             user: user.toSafeObject()
         });
 
     } catch (error) {
-        console.error('Erreur lors de la connexion:', error);
-        res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
-/**
- * Déconnexion d'un utilisateur
- * POST /api/auth/logout
- */
+// POST /api/auth/logout - Logout
 exports.logout = (req, res) => {
-    // Supprimer le cookie en le remplaçant par un cookie expiré
     res.cookie('token', '', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        expires: new Date(0) // Date dans le passé = cookie expiré
+        expires: new Date(0)
     });
-
-    res.json({ message: 'Déconnexion réussie' });
+    res.json({ message: 'Logged out successfully' });
 };
 
-/**
- * Récupérer l'utilisateur courant (pour vérifier la session)
- * GET /api/auth/me
- */
+// GET /api/auth/me - Current user
 exports.getCurrentUser = async (req, res) => {
     try {
         const user = await User.findById(req.userId);
         if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+            return res.status(404).json({ error: 'User not found' });
         }
         res.json({ user: user.toSafeObject() });
     } catch (error) {
-        console.error('Erreur lors de la récupération de l\'utilisateur:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
-/**
- * Mise à jour du profil utilisateur
- * PUT /api/auth/profile
- */
+// PUT /api/auth/profile - Update profile
 exports.updateProfile = async (req, res) => {
     try {
         const { name, email } = req.body;
-        const userId = req.userId;
 
-        // Validation
         if (!name || !email) {
-            return res.status(400).json({ error: 'Nom et email requis' });
+            return res.status(400).json({ error: 'Name and email are required' });
         }
 
-        // Vérifier si l'email est déjà utilisé par un autre utilisateur
-        const existingUser = await User.findOne({
+        // Check that email is not taken by another user
+        const existing = await User.findOne({
             email: email.toLowerCase(),
-            _id: { $ne: userId }
+            _id: { $ne: req.userId }
         });
-
-        if (existingUser) {
-            return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+        if (existing) {
+            return res.status(400).json({ error: 'This email is already in use' });
         }
 
-        // Mettre à jour l'utilisateur
         const user = await User.findByIdAndUpdate(
-            userId,
+            req.userId,
             { name, email: email.toLowerCase() },
             { new: true, runValidators: true }
         );
 
         if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        res.json({
-            message: 'Profil mis à jour',
-            user: user.toSafeObject()
-        });
+        res.json({ message: 'Profile updated', user: user.toSafeObject() });
 
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du profil:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
-/**
- * Changement de mot de passe
- * PUT /api/auth/password
- */
+// PUT /api/auth/password - Change password
 exports.changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-        const userId = req.userId;
 
-        // Validation
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: 'Mots de passe requis' });
+            return res.status(400).json({ error: 'Passwords are required' });
         }
 
         if (newPassword.length < 8) {
-            return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 8 caractères' });
+            return res.status(400).json({ error: 'Minimum 8 characters' });
         }
 
-        // Récupérer l'utilisateur
-        const user = await User.findById(userId);
+        const user = await User.findById(req.userId);
         if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        // Vérifier l'ancien mot de passe
-        const isValidPassword = await user.comparePassword(currentPassword);
-        if (!isValidPassword) {
-            return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+        const isValid = await user.comparePassword(currentPassword);
+        if (!isValid) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
         }
 
-        // Mettre à jour le mot de passe
         user.password = newPassword;
-        await user.save(); // Le middleware pre-save hashera automatiquement
+        await user.save();
 
-        res.json({ message: 'Mot de passe modifié avec succès' });
+        res.json({ message: 'Password changed' });
 
     } catch (error) {
-        console.error('Erreur lors du changement de mot de passe:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
-/**
- * Liste de tous les utilisateurs (admin uniquement)
- * GET /api/auth/users
- */
+// GET /api/auth/users - List users (admin)
 exports.getAllUsers = async (req, res) => {
     try {
-        // Vérifier que l'utilisateur est admin
-        const requestingUser = await User.findById(req.userId);
-        if (!requestingUser || requestingUser.role !== 'admin') {
-            return res.status(403).json({ error: 'Accès non autorisé' });
+        const admin = await User.findById(req.userId);
+        if (!admin || admin.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized access' });
         }
 
-        // Récupérer tous les utilisateurs
         const users = await User.find({}).select('-password').sort({ createdAt: -1 });
-
-        res.json({
-            users: users.map(user => user.toSafeObject())
-        });
+        res.json({ users: users.map(u => u.toSafeObject()) });
 
     } catch (error) {
-        console.error('Erreur lors de la récupération des utilisateurs:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
-/**
- * Modification du rôle d'un utilisateur (admin uniquement)
- * PUT /api/auth/users/:id/role
- */
+// PUT /api/auth/users/:id/role - Update role (admin)
 exports.updateUserRole = async (req, res) => {
     try {
         const { role } = req.body;
-        const targetUserId = req.params.id;
+        const targetId = req.params.id;
 
-        // Vérifier que l'utilisateur est admin
-        const requestingUser = await User.findById(req.userId);
-        if (!requestingUser || requestingUser.role !== 'admin') {
-            return res.status(403).json({ error: 'Accès non autorisé' });
+        const admin = await User.findById(req.userId);
+        if (!admin || admin.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized access' });
         }
 
-        // Validation du rôle
         if (!['user', 'admin'].includes(role)) {
-            return res.status(400).json({ error: 'Rôle invalide' });
+            return res.status(400).json({ error: 'Invalid role' });
         }
 
-        // Empêcher un admin de se retirer ses propres droits admin
-        if (targetUserId === req.userId.toString() && role !== 'admin') {
-            return res.status(400).json({ error: 'Vous ne pouvez pas retirer vos propres droits admin' });
+        // An admin cannot remove their own admin rights
+        if (targetId === req.userId.toString() && role !== 'admin') {
+            return res.status(400).json({ error: 'Action not allowed' });
         }
 
-        // Mettre à jour le rôle
-        const user = await User.findByIdAndUpdate(
-            targetUserId,
-            { role },
-            { new: true }
-        );
-
+        const user = await User.findByIdAndUpdate(targetId, { role }, { new: true });
         if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        res.json({
-            message: 'Rôle mis à jour',
-            user: user.toSafeObject()
-        });
+        res.json({ message: 'Role updated', user: user.toSafeObject() });
 
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du rôle:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
-/**
- * Suppression d'un utilisateur (admin uniquement)
- * DELETE /api/auth/users/:id
- */
+// DELETE /api/auth/users/:id - Delete a user (admin)
 exports.deleteUser = async (req, res) => {
     try {
-        const targetUserId = req.params.id;
+        const targetId = req.params.id;
 
-        // Vérifier que l'utilisateur est admin
-        const requestingUser = await User.findById(req.userId);
-        if (!requestingUser || requestingUser.role !== 'admin') {
-            return res.status(403).json({ error: 'Accès non autorisé' });
+        const admin = await User.findById(req.userId);
+        if (!admin || admin.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized access' });
         }
 
-        // Empêcher un admin de se supprimer lui-même
-        if (targetUserId === req.userId.toString()) {
-            return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte' });
+        if (targetId === req.userId.toString()) {
+            return res.status(400).json({ error: 'Action not allowed' });
         }
 
-        // Supprimer l'utilisateur
-        const user = await User.findByIdAndDelete(targetUserId);
-
+        const user = await User.findByIdAndDelete(targetId);
         if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        res.json({ message: 'Utilisateur supprimé' });
+        res.json({ message: 'User deleted' });
 
     } catch (error) {
-        console.error('Erreur lors de la suppression:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        res.status(500).json({ error: 'Server error' });
     }
 };

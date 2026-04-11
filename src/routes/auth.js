@@ -1,8 +1,8 @@
 /**
- * Routes d'Authentification
- * Définit les endpoints pour l'inscription, connexion et gestion des utilisateurs
+ * Authentication Routes
+ * Defines endpoints for registration, login and user management
  *
- * SÉCURITÉ : Le token JWT est transmis via cookie HTTP-only (pas dans le corps JSON)
+ * SECURITY: The JWT token is transmitted via HTTP-only cookie (not in the JSON body)
  */
 
 const express = require('express');
@@ -13,76 +13,76 @@ const authMiddleware = require('../middleware/auth');
 const { loginLimiter } = require('../middleware/rateLimit');
 
 // ============================================
-// ROUTES PUBLIQUES (pas de token requis)
+// PUBLIC ROUTES (no token required)
 // ============================================
 
 /**
  * POST /api/auth/register
- * Inscription d'un nouvel utilisateur
- * Le token est renvoyé dans un cookie HTTP-only
+ * Register a new user
+ * The token is returned in an HTTP-only cookie
  */
 router.post('/register',
     [
         body('name')
             .trim()
-            .notEmpty().withMessage('Le nom est requis')
-            .isLength({ min: 2, max: 50 }).withMessage('Le nom doit contenir entre 2 et 50 caractères'),
+            .notEmpty().withMessage('Name is required')
+            .isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
         body('email')
-            .isEmail().withMessage('Email invalide')
+            .isEmail().withMessage('Invalid email')
             .normalizeEmail(),
         body('password')
-            .isLength({ min: 8 }).withMessage('Le mot de passe doit contenir au moins 8 caractères')
+            .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
     ],
     authController.register
 );
 
 /**
  * POST /api/auth/login
- * Connexion d'un utilisateur
- * Le token est renvoyé dans un cookie HTTP-only
- * Rate limiting appliqué pour éviter le brute force
+ * Log in a user
+ * The token is returned in an HTTP-only cookie
+ * Rate limiting applied to prevent brute force
  */
 router.post('/login',
     loginLimiter,
     [
         body('email')
-            .isEmail().withMessage('Email invalide')
+            .isEmail().withMessage('Invalid email')
             .normalizeEmail(),
         body('password')
-            .notEmpty().withMessage('Mot de passe requis')
+            .notEmpty().withMessage('Password is required')
     ],
     authController.login
 );
 
 /**
  * POST /api/auth/logout
- * Déconnexion - supprime le cookie contenant le token
+ * Logout - deletes the cookie containing the token
  */
 router.post('/logout', authController.logout);
 
 // ============================================
-// ROUTES PROTÉGÉES (token JWT requis dans le cookie)
+// PROTECTED ROUTES (JWT token required in cookie)
 // ============================================
 
 /**
  * GET /api/auth/me
- * Récupère les informations de l'utilisateur connecté
- * Utilisé pour vérifier si la session est active
+ * Get the logged-in user's information
+ * Used to check if the session is active
  */
 router.get('/me', authMiddleware, authController.getCurrentUser);
 
 /**
  * PUT /api/auth/profile
- * Mise à jour du profil de l'utilisateur connecté
+ * Update the logged-in user's profile
  */
 router.put('/profile',
     authMiddleware,
     [
         body('name')
             .trim()
-            .notEmpty().withMessage('Le nom est requis'),
+            .notEmpty().withMessage('Name is required'),
         body('email')
-            .isEmail().withMessage('Email invalide')
+            .isEmail().withMessage('Invalid email')
             .normalizeEmail()
     ],
     authController.updateProfile
@@ -90,26 +90,26 @@ router.put('/profile',
 
 /**
  * PUT /api/auth/password
- * Changement du mot de passe de l'utilisateur connecté
+ * Change the logged-in user's password
  */
 router.put('/password',
     authMiddleware,
     [
         body('currentPassword')
-            .notEmpty().withMessage('Mot de passe actuel requis'),
+            .notEmpty().withMessage('Current password is required'),
         body('newPassword')
-            .isLength({ min: 8 }).withMessage('Le nouveau mot de passe doit contenir au moins 8 caractères')
+            .isLength({ min: 8 }).withMessage('New password must be at least 8 characters long')
     ],
     authController.changePassword
 );
 
 // ============================================
-// ROUTES ADMIN (token JWT + rôle admin requis)
+// ADMIN ROUTES (JWT token + admin role required)
 // ============================================
 
 /**
  * GET /api/auth/users
- * Liste de tous les utilisateurs (admin uniquement)
+ * List all users (admin only)
  */
 router.get('/users',
     authMiddleware,
@@ -118,20 +118,20 @@ router.get('/users',
 
 /**
  * PUT /api/auth/users/:id/role
- * Modification du rôle d'un utilisateur (admin uniquement)
+ * Update a user's role (admin only)
  */
 router.put('/users/:id/role',
     authMiddleware,
     [
         body('role')
-            .isIn(['user', 'admin']).withMessage('Rôle invalide')
+            .isIn(['user', 'admin']).withMessage('Invalid role')
     ],
     authController.updateUserRole
 );
 
 /**
  * DELETE /api/auth/users/:id
- * Suppression d'un utilisateur (admin uniquement)
+ * Delete a user (admin only)
  */
 router.delete('/users/:id',
     authMiddleware,

@@ -1,8 +1,8 @@
 /**
- * Application de Gestion de Comptes Utilisateurs
- * Serveur Express avec MongoDB
+ * User Account Management Application
+ * Express server with MongoDB
  *
- * Projet Programmation Sécurisée - ESAIP
+ * Secure Programming Project - ESAIP
  */
 
 const express = require('express');
@@ -13,18 +13,18 @@ const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
 
-// Import des routes
+// Import routes
 const authRoutes = require('./routes/auth');
 
-// Initialisation de l'application Express
+// Initialize Express application
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================
-// MIDDLEWARES DE SÉCURITÉ
+// SECURITY MIDDLEWARES
 // ============================================
 
-// Helmet ajoute des headers HTTP de sécurité
+// Helmet adds security HTTP headers
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -38,77 +38,77 @@ app.use(helmet({
             frameAncestors: ["'none'"]
         }
     },
-    // Protection contre le clickjacking
+    // Clickjacking protection
     frameguard: { action: 'deny' },
     // Force HTTPS
     hsts: {
         maxAge: 31536000,
         includeSubDomains: true
     },
-    // Désactive la détection MIME
+    // Disable MIME sniffing
     noSniff: true,
-    // Protection XSS
+    // XSS protection
     xssFilter: true
 }));
 
-// Configuration CORS avec credentials pour les cookies
+// CORS configuration with credentials for cookies
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || true, // true permet toutes les origines en dev
-    credentials: true // Permet l'envoi des cookies
+    origin: process.env.CORS_ORIGIN || true, // true allows all origins in dev
+    credentials: true // Allow cookies to be sent
 }));
 
-// Parser pour les cookies (nécessaire pour lire le token JWT)
+// Cookie parser (required to read the JWT token)
 app.use(cookieParser());
 
-// Parser JSON pour les requêtes
-app.use(express.json({ limit: '10kb' })); // Limite la taille des requêtes
+// JSON parser for requests
+app.use(express.json({ limit: '10kb' })); // Limit request size
 
 // ============================================
-// FICHIERS STATIQUES
+// STATIC FILES
 // ============================================
 
-// Servir les fichiers du dossier public
+// Serve files from the public folder
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ============================================
-// ROUTES API
+// API ROUTES
 // ============================================
 
-// Routes d'authentification
+// Authentication routes
 app.use('/api/auth', authRoutes);
 
-// Endpoint de santé pour vérifier que le serveur fonctionne
+// Health endpoint to check that the server is running
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'OK',
-        message: 'Serveur en fonctionnement',
+        message: 'Server is running',
         timestamp: new Date().toISOString()
     });
 });
 
-// Route catch-all pour le SPA (renvoie index.html)
+// Catch-all route for SPA (returns index.html)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // ============================================
-// GESTION DES ERREURS
+// ERROR HANDLING
 // ============================================
 
-// Middleware de gestion des erreurs
+// Error handling middleware
 app.use((err, req, res, next) => {
-    console.error('Erreur:', err.stack);
+    console.error('Error:', err.stack);
 
-    // Ne pas exposer les détails des erreurs en production
+    // Do not expose error details in production
     const isDev = process.env.NODE_ENV !== 'production';
 
     res.status(err.status || 500).json({
-        error: isDev ? err.message : 'Erreur serveur interne'
+        error: isDev ? err.message : 'Internal server error'
     });
 });
 
 // ============================================
-// CONNEXION BASE DE DONNÉES
+// DATABASE CONNECTION
 // ============================================
 
 const connectDB = async () => {
@@ -116,25 +116,25 @@ const connectDB = async () => {
         const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/secureapp';
 
         await mongoose.connect(mongoURI, {
-            // Options de connexion recommandées
+            // Recommended connection options
         });
 
-        console.log('MongoDB connecté avec succès');
+        console.log('MongoDB connected successfully');
     } catch (error) {
-        console.error('Erreur de connexion MongoDB:', error.message);
+        console.error('MongoDB connection error:', error.message);
         process.exit(1);
     }
 };
 
 // ============================================
-// DÉMARRAGE DU SERVEUR
+// START SERVER
 // ============================================
 
 const startServer = async () => {
     await connectDB();
 
     app.listen(PORT, () => {
-        console.log(`Serveur démarré sur le port ${PORT}`);
+        console.log(`Server started on port ${PORT}`);
         console.log(`URL: http://localhost:${PORT}`);
     });
 };

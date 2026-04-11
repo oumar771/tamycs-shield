@@ -1,18 +1,18 @@
 {
   "name": "secureapp",
   "version": "1.0.0",
-  "description": "Application de gestion de comptes utilisateurs - Projet Programmation Sécurisée ESAIP",
+  "description": "Secure user account management application - Secure Programming Project ESAIP",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js"
   },
   "keywords": [
-    "authentification",
-    "securite",
-    "gestion-utilisateurs"
+    "authentication",
+    "security",
+    "user-management"
   ],
-  "author": "Équipe Projet ESAIP",
+  "author": "Oumar Touré, Rodney, Fresnel — ESAIP Bachelor 3 Cybersecurity",
   "license": "MIT",
   "dependencies": {
     "bcrypt": "^5.1.1",

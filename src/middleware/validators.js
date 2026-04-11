@@ -3,15 +3,15 @@ const { body, validationResult } = require('express-validator');
 const passwordValidator = [
   body('password')
     .isLength({ min: 12 })
-    .withMessage('Le mot de passe doit contenir au moins 12 caractères')
+    .withMessage('Password must be at least 12 characters long')
     .matches(/[a-z]/)
-    .withMessage('Le mot de passe doit contenir au moins une minuscule')
+    .withMessage('Password must contain at least one lowercase letter')
     .matches(/[A-Z]/)
-    .withMessage('Le mot de passe doit contenir au moins une majuscule')
+    .withMessage('Password must contain at least one uppercase letter')
     .matches(/[0-9]/)
-    .withMessage('Le mot de passe doit contenir au moins un chiffre')
+    .withMessage('Password must contain at least one digit')
     .matches(/[!@#$%^&*(),.?":{}|<>_+\-=[\]\\;']/)
-    .withMessage('Le mot de passe doit contenir au moins un symbole')
+    .withMessage('Password must contain at least one symbol')
 ];
 
 const emailValidator = [
