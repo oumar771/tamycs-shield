@@ -1,663 +1,842 @@
-/**
- * User Account Management Application
- * Secure Programming Project - ESAIP
- *
- * This file handles the frontend logic of the application:
- * - Authentication (login/registration)
- * - User profile management
- * - User administration (for admins)
- *
- * SECURITY: The JWT token is stored in an HTTP-only cookie server-side.
- * The frontend does not handle the token directly, which protects against XSS attacks.
- */
-
-// API configuration
+// API Configuration
 const API_URL = '/api';
+let authToken = localStorage.getItem('authToken');
+let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+let passwords = [];
+let currentFilter = 'all';
+let currentGeneratorMode = 'random';
 
-// Application state (logged-in user)
-let currentUser = null;
+// Initialize app
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuthStatus();
 
-// ============================================
-// INITIALIZATION
-// ============================================
-
-/**
- * Initializes the application on page load
- * Checks for an active session by calling /api/auth/me
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // Attach events to buttons
-    initEventListeners();
-
-    // Check if the user has an active session (valid cookie)
-    checkSession();
+    // Generate initial password suggestions for public section
+    generateMultiplePasswords();
 });
 
-/**
- * Checks if the user has an active session
- * The server verifies the HTTP-only cookie and returns the user info
- */
-async function checkSession() {
-    try {
-        var response = await fetch(API_URL + '/auth/me', {
-            credentials: 'include' // Include cookies in the request
-        });
-
-        if (response.ok) {
-            var data = await response.json();
-            currentUser = data.user;
-            showDashboard();
-        }
-        // If no valid session, stay on the public page
-    } catch (error) {
-        // Network error, stay on the public page
-        console.log('No active session');
-    }
-}
-
-/**
- * Initializes all event listeners
- */
-function initEventListeners() {
-    // Navbar buttons
-    document.getElementById('btn-login').addEventListener('click', function() {
-        showModal('login-modal');
-    });
-
-    document.getElementById('btn-register').addEventListener('click', function() {
-        showModal('register-modal');
-    });
-
-    document.getElementById('btn-logout').addEventListener('click', logout);
-
-    // Forms
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
-    document.getElementById('register-form').addEventListener('submit', handleRegister);
-    document.getElementById('profile-form').addEventListener('submit', updateProfile);
-    document.getElementById('password-form').addEventListener('submit', changePassword);
-    document.getElementById('role-form').addEventListener('submit', updateUserRole);
-
-    // Modal close buttons
-    document.querySelectorAll('.modal-close').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var modal = this.closest('.modal');
-            if (modal) {
-                modal.classList.remove('show');
-            }
-        });
-    });
-
-    // Modal links
-    document.getElementById('link-to-register').addEventListener('click', function(e) {
-        e.preventDefault();
-        closeModal('login-modal');
-        showModal('register-modal');
-    });
-
-    document.getElementById('link-to-login').addEventListener('click', function(e) {
-        e.preventDefault();
-        closeModal('register-modal');
-        showModal('login-modal');
-    });
-
-    // Sidebar navigation
-    document.getElementById('nav-profile').addEventListener('click', function(e) {
-        e.preventDefault();
-        showView('profile', this);
-    });
-
-    document.getElementById('nav-security').addEventListener('click', function(e) {
-        e.preventDefault();
-        showView('security', this);
-    });
-
-    document.getElementById('nav-users').addEventListener('click', function(e) {
-        e.preventDefault();
-        showView('users', this);
-    });
-
-    // Close modal by clicking outside
-    document.querySelectorAll('.modal').forEach(function(modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.classList.remove('show');
-            }
-        });
-    });
-
-    // Close modals with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.modal.show').forEach(function(modal) {
-                modal.classList.remove('show');
-            });
-        }
-    });
-}
-
-// ============================================
-// MODAL MANAGEMENT
-// ============================================
-
-/**
- * Shows a modal by its ID
- */
-function showModal(modalId) {
-    var modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('show');
-    }
-}
-
-/**
- * Closes a modal by its ID
- */
-function closeModal(modalId) {
-    var modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('show');
-        var form = modal.querySelector('form');
-        if (form) form.reset();
-        var error = modal.querySelector('.alert-error');
-        if (error) error.style.display = 'none';
-    }
-}
-
-// ============================================
-// AUTHENTICATION
-// ============================================
-
-/**
- * Handles the login form submission
- * The token is stored in an HTTP-only cookie by the server
- */
-async function handleLogin(event) {
-    event.preventDefault();
-
-    var email = document.getElementById('login-email').value.trim();
-    var password = document.getElementById('login-password').value;
-    var errorDiv = document.getElementById('login-error');
-
-    if (!email || !password) {
-        showError(errorDiv, 'Please fill in all fields');
-        return;
-    }
-
-    try {
-        var response = await fetch(API_URL + '/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include', // Allows the server to set the cookie
-            body: JSON.stringify({ email: email, password: password })
-        });
-
-        var data = await response.json();
-
-        if (!response.ok) {
-            showError(errorDiv, data.error || 'Invalid credentials');
-            return;
-        }
-
-        // The token is now in an HTTP-only cookie
-        // We only store non-sensitive user info
-        currentUser = data.user;
-
-        closeModal('login-modal');
+// Check authentication status
+function checkAuthStatus() {
+    if (authToken && currentUser) {
         showDashboard();
-        showToast('Login successful', 'success');
-
-    } catch (error) {
-        showError(errorDiv, 'Server connection error');
+        loadPasswords();
+    } else {
+        showPublicSection();
     }
 }
 
-/**
- * Handles the registration form submission
- * The token is stored in an HTTP-only cookie by the server
- */
-async function handleRegister(event) {
-    event.preventDefault();
-
-    var name = document.getElementById('register-name').value.trim();
-    var email = document.getElementById('register-email').value.trim();
-    var password = document.getElementById('register-password').value;
-    var confirm = document.getElementById('register-confirm').value;
-    var errorDiv = document.getElementById('register-error');
-
-    if (!name || !email || !password || !confirm) {
-        showError(errorDiv, 'Please fill in all fields');
-        return;
-    }
-
-    if (password.length < 8) {
-        showError(errorDiv, 'Password must be at least 8 characters long');
-        return;
-    }
-
-    if (password !== confirm) {
-        showError(errorDiv, 'Passwords do not match');
-        return;
-    }
-
-    try {
-        var response = await fetch(API_URL + '/auth/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include', // Allows the server to set the cookie
-            body: JSON.stringify({ name: name, email: email, password: password })
-        });
-
-        var data = await response.json();
-
-        if (!response.ok) {
-            showError(errorDiv, data.error || 'Registration error');
-            return;
-        }
-
-        // The token is now in an HTTP-only cookie
-        currentUser = data.user;
-
-        closeModal('register-modal');
-        showDashboard();
-        showToast('Account created successfully', 'success');
-
-    } catch (error) {
-        showError(errorDiv, 'Server connection error');
-    }
-}
-
-/**
- * Logs out the user
- * Calls the server to delete the HTTP-only cookie
- */
-async function logout() {
-    try {
-        await fetch(API_URL + '/auth/logout', {
-            method: 'POST',
-            credentials: 'include' // Sends the cookie to the server for deletion
-        });
-    } catch (error) {
-        // Even on error, log out client-side
-    }
-
-    currentUser = null;
-
+// UI Navigation
+function showPublicSection() {
     document.getElementById('public-section').style.display = 'block';
     document.getElementById('dashboard-section').style.display = 'none';
-    document.getElementById('auth-buttons').style.display = 'flex';
-    document.getElementById('user-nav').style.display = 'none';
-
-    showToast('Logged out successfully', 'success');
+    document.getElementById('login-btn').style.display = 'inline-block';
+    document.getElementById('register-btn').style.display = 'inline-block';
+    document.getElementById('logout-btn').style.display = 'none';
 }
 
-// ============================================
-// USER INTERFACE
-// ============================================
-
-/**
- * Shows the dashboard after login
- */
 function showDashboard() {
     document.getElementById('public-section').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'block';
-
-    document.getElementById('auth-buttons').style.display = 'none';
-    document.getElementById('user-nav').style.display = 'flex';
-    document.getElementById('user-display-name').textContent = currentUser.name;
-
-    var roleBadge = document.getElementById('user-role-badge');
-    roleBadge.textContent = currentUser.role === 'admin' ? 'ADMIN' : 'USER';
-    roleBadge.className = 'user-role ' + currentUser.role;
-
-    var adminMenu = document.getElementById('admin-menu');
-    if (currentUser.role === 'admin') {
-        adminMenu.style.display = 'block';
-    } else {
-        adminMenu.style.display = 'none';
-    }
-
-    loadProfile();
+    document.getElementById('login-btn').style.display = 'none';
+    document.getElementById('register-btn').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'inline-block';
 }
 
-/**
- * Shows a specific view in the dashboard
- */
-function showView(viewName, clickedLink) {
-    // Hide all views
-    document.querySelectorAll('.view').forEach(function(view) {
-        view.style.display = 'none';
+// Modal Functions
+function showLoginModal() {
+    document.getElementById('login-modal').style.display = 'flex';
+}
+
+function closeLoginModal() {
+    document.getElementById('login-modal').style.display = 'none';
+    document.getElementById('login-form').reset();
+    document.getElementById('login-error').textContent = '';
+}
+
+function showRegisterModal() {
+    document.getElementById('register-modal').style.display = 'flex';
+}
+
+function closeRegisterModal() {
+    document.getElementById('register-modal').style.display = 'none';
+    document.getElementById('register-form').reset();
+    document.getElementById('register-error').textContent = '';
+}
+
+function showAddPasswordModal() {
+    document.getElementById('password-modal-title').textContent = 'Add a password';
+    document.getElementById('password-form').reset();
+    document.getElementById('password-id').value = '';
+    document.getElementById('password-modal').style.display = 'flex';
+}
+
+function closePasswordModal() {
+    document.getElementById('password-modal').style.display = 'none';
+    document.getElementById('password-form').reset();
+}
+
+function showExportModal() {
+    document.getElementById('export-modal').style.display = 'flex';
+}
+
+function closeExportModal() {
+    document.getElementById('export-modal').style.display = 'none';
+}
+
+// Authentication Functions
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+
+    try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            authToken = data.token;
+            currentUser = data.user;
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+            closeLoginModal();
+            showDashboard();
+            loadPasswords();
+            showToast('Login successful!', 'success');
+        } else {
+            errorEl.textContent = data.error || 'Invalid credentials';
+        }
+    } catch (error) {
+        errorEl.textContent = 'Server connection error';
+    }
+}
+
+async function handleRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const passwordConfirm = document.getElementById('register-password-confirm').value;
+    const errorEl = document.getElementById('register-error');
+
+    if (password !== passwordConfirm) {
+        errorEl.textContent = 'Passwords do not match';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            authToken = data.token;
+            currentUser = data.user;
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+            closeRegisterModal();
+            showDashboard();
+            loadPasswords();
+            showToast('Account created successfully!', 'success');
+        } else {
+            errorEl.textContent = data.error || 'Registration error';
+        }
+    } catch (error) {
+        errorEl.textContent = 'Server connection error';
+    }
+}
+
+function logout() {
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    passwords = [];
+    showPublicSection();
+    showToast('Logged out successfully', 'success');
+}
+
+// Password Generator - Random Mode
+function switchGeneratorTab(mode) {
+    currentGeneratorMode = mode;
+
+    // Update tab active state
+    document.querySelectorAll('.generator-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.tab === mode) {
+            tab.classList.add('active');
+        }
     });
 
-    // Show the requested view
-    var view = document.getElementById('view-' + viewName);
-    if (view) {
-        view.style.display = 'block';
-    }
-
-    // Update the active menu item
-    document.querySelectorAll('.sidebar-menu a').forEach(function(link) {
-        link.classList.remove('active');
+    // Show/hide generator content
+    document.querySelectorAll('.generator-content').forEach(content => {
+        content.classList.remove('active');
     });
-    if (clickedLink) {
-        clickedLink.classList.add('active');
-    }
 
-    // Load data based on view
-    if (viewName === 'users' && currentUser.role === 'admin') {
-        loadUsers();
-    } else if (viewName === 'security') {
-        loadSecurityInfo();
-    }
-}
-
-// ============================================
-// PROFILE MANAGEMENT
-// ============================================
-
-/**
- * Loads and displays user profile information
- */
-function loadProfile() {
-    document.getElementById('profile-name').textContent = currentUser.name;
-    document.getElementById('profile-email').textContent = currentUser.email;
-    document.getElementById('profile-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
-
-    document.getElementById('profile-name-input').value = currentUser.name;
-    document.getElementById('profile-email-input').value = currentUser.email;
-}
-
-/**
- * Updates the user profile information
- */
-async function updateProfile(event) {
-    event.preventDefault();
-
-    var name = document.getElementById('profile-name-input').value.trim();
-    var email = document.getElementById('profile-email-input').value.trim();
-
-    if (!name || !email) {
-        showToast('Please fill in all fields', 'error');
-        return;
-    }
-
-    try {
-        var response = await fetch(API_URL + '/auth/profile', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include', // Sends the authentication cookie
-            body: JSON.stringify({ name: name, email: email })
-        });
-
-        var data = await response.json();
-
-        if (!response.ok) {
-            showToast(data.error || 'Update error', 'error');
-            return;
-        }
-
-        currentUser.name = name;
-        currentUser.email = email;
-
-        loadProfile();
-        document.getElementById('user-display-name').textContent = name;
-
-        showToast('Profile updated', 'success');
-
-    } catch (error) {
-        showToast('Server connection error', 'error');
-    }
-}
-
-/**
- * Loads the account security information
- */
-function loadSecurityInfo() {
-    if (currentUser.createdAt) {
-        var date = new Date(currentUser.createdAt);
-        document.getElementById('account-created').textContent = date.toLocaleDateString('en-US');
-    }
-
-    if (currentUser.lastLogin) {
-        var date = new Date(currentUser.lastLogin);
-        document.getElementById('last-login').textContent = date.toLocaleString('en-US');
+    if (mode === 'random') {
+        document.getElementById('random-generator').classList.add('active');
+        generateMultiplePasswords();
     } else {
-        document.getElementById('last-login').textContent = 'First login';
+        document.getElementById('memorable-generator').classList.add('active');
+        generateMultipleMemorablePasswords();
     }
 }
 
-/**
- * Changes the user's password
- */
-async function changePassword(event) {
-    event.preventDefault();
+function updateRandomLength(value) {
+    document.getElementById('random-length-value').textContent = value;
+    generateMultiplePasswords();
+}
 
-    var currentPassword = document.getElementById('current-password').value;
-    var newPassword = document.getElementById('new-password').value;
-    var confirmPassword = document.getElementById('confirm-password').value;
+function updateMemorableWords(value) {
+    document.getElementById('memorable-words-value').textContent = value;
+    generateMultipleMemorablePasswords();
+}
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        showToast('Please fill in all fields', 'error');
-        return;
-    }
+async function generateMultiplePasswords() {
+    const length = parseInt(document.getElementById('random-length').value);
+    const useUppercase = document.getElementById('random-uppercase').checked;
+    const useLowercase = document.getElementById('random-lowercase').checked;
+    const useNumbers = document.getElementById('random-numbers').checked;
+    const useSymbols = document.getElementById('random-symbols').checked;
 
-    if (newPassword.length < 8) {
-        showToast('New password must be at least 8 characters long', 'error');
-        return;
-    }
-
-    if (newPassword !== confirmPassword) {
-        showToast('New passwords do not match', 'error');
-        return;
-    }
+    const options = {
+        mode: 'random',
+        length,
+        includeUppercase: useUppercase,
+        includeLowercase: useLowercase,
+        includeNumbers: useNumbers,
+        includeSymbols: useSymbols
+    };
 
     try {
-        var response = await fetch(API_URL + '/auth/password', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword })
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(options)
         });
 
-        var data = await response.json();
+        const data = await response.json();
 
-        if (!response.ok) {
-            showToast(data.error || 'Password change error', 'error');
-            return;
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'password-suggestions-list');
         }
-
-        document.getElementById('password-form').reset();
-        showToast('Password changed successfully', 'success');
-
     } catch (error) {
-        showToast('Server connection error', 'error');
+        console.error('Error generating passwords:', error);
     }
 }
 
-// ============================================
-// ADMINISTRATION - USER MANAGEMENT
-// ============================================
+async function generateMultipleMemorablePasswords() {
+    const wordCount = parseInt(document.getElementById('memorable-words').value);
+    const separator = document.getElementById('memorable-separator').value;
+    const capitalizeWords = document.getElementById('memorable-capitalize').checked;
+    const includeNumbers = document.getElementById('memorable-numbers').checked;
 
-/**
- * Loads the list of all users (admin only)
- */
-async function loadUsers() {
+    const options = {
+        mode: 'memorable',
+        wordCount,
+        separator,
+        capitalizeWords,
+        includeNumbers
+    };
+
     try {
-        var response = await fetch(API_URL + '/auth/users', {
-            credentials: 'include'
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(options)
         });
 
-        var data = await response.json();
+        const data = await response.json();
 
-        if (!response.ok) {
-            showToast(data.error || 'Loading error', 'error');
-            return;
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'memorable-suggestions-list');
         }
+    } catch (error) {
+        console.error('Error generating memorable passwords:', error);
+    }
+}
 
-        var totalUsers = data.users.length;
-        var adminUsers = data.users.filter(function(u) { return u.role === 'admin'; }).length;
-        document.getElementById('stat-total-users').textContent = totalUsers;
-        document.getElementById('stat-admin-users').textContent = adminUsers;
+function displayPasswordSuggestions(suggestions, containerId) {
+    const container = document.getElementById(containerId);
 
-        var tbody = document.getElementById('users-table-body');
-        var emptyState = document.getElementById('users-empty');
+    container.innerHTML = suggestions.map(item => `
+        <div class="password-suggestion">
+            <div class="password-suggestion-header">
+                <div class="password-strength-badge strength-${item.strength.toLowerCase().replace(' ', '-')}">
+                    ${getStrengthIcon(item.strength)} ${translateStrength(item.strength)}
+                </div>
+                <span class="password-entropy">${Math.round(item.entropy)} bits</span>
+            </div>
+            <div class="password-suggestion-value" title="${escapeHtml(item.password)}">
+                ${escapeHtml(item.password)}
+            </div>
+            <div class="password-suggestion-footer">
+                <span class="crack-time">${item.crackTime}</span>
+                <button class="btn-copy" onclick="copyToClipboard('${escapeHtml(item.password).replace(/'/g, "\\'")}', event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
 
-        if (data.users.length === 0) {
-            tbody.innerHTML = '';
-            emptyState.style.display = 'block';
-            return;
-        }
+function translateStrength(strength) {
+    const map = {
+        'Très faible': 'Very weak',
+        'Faible': 'Weak',
+        'Moyen': 'Fair',
+        'Fort': 'Strong',
+        'Très fort': 'Very strong'
+    };
+    return map[strength] || strength;
+}
 
-        emptyState.style.display = 'none';
+function getStrengthIcon(strength) {
+    const icons = {
+        'Très faible': '🔴',
+        'Faible': '🟠',
+        'Moyen': '🟡',
+        'Fort': '🟢',
+        'Très fort': '🟢',
+        'Very weak': '🔴',
+        'Weak': '🟠',
+        'Fair': '🟡',
+        'Strong': '🟢',
+        'Very strong': '🟢'
+    };
+    return icons[strength] || '⚪';
+}
 
-        var html = '';
-        data.users.forEach(function(user) {
-            html += '<tr>';
-            html += '<td>' + escapeHtml(user.name) + '</td>';
-            html += '<td>' + escapeHtml(user.email) + '</td>';
-            html += '<td><span class="badge badge-' + user.role + '">' + (user.role === 'admin' ? 'Admin' : 'User') + '</span></td>';
-            html += '<td>' + new Date(user.createdAt).toLocaleDateString('en-US') + '</td>';
-            html += '<td class="table-actions">';
-            html += '<button class="btn btn-sm btn-secondary" data-action="edit-role" data-user-id="' + user.id + '" data-user-role="' + user.role + '">Edit role</button>';
-            if (user.id !== currentUser.id) {
-                html += ' <button class="btn btn-sm btn-danger" data-action="delete-user" data-user-id="' + user.id + '">Delete</button>';
+async function copyToClipboard(text, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast('Password copied!', 'success');
+    } catch (error) {
+        showToast('Copy error', 'error');
+    }
+}
+
+// Password Management
+async function loadPasswords() {
+    try {
+        const response = await fetch(`${API_URL}/passwords`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
             }
-            html += '</td>';
-            html += '</tr>';
-        });
-        tbody.innerHTML = html;
-
-        // Attach events to buttons
-        tbody.querySelectorAll('[data-action="edit-role"]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                editUserRole(this.getAttribute('data-user-id'), this.getAttribute('data-user-role'));
-            });
         });
 
-        tbody.querySelectorAll('[data-action="delete-user"]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                deleteUser(this.getAttribute('data-user-id'));
-            });
-        });
-
+        if (response.ok) {
+            passwords = await response.json();
+            displayPasswords();
+            updateCategoryCounts();
+        } else if (response.status === 401) {
+            logout();
+        }
     } catch (error) {
-        showToast('Server connection error', 'error');
+        console.error('Error loading passwords:', error);
     }
 }
 
-/**
- * Opens the modal to edit a user's role
- */
-function editUserRole(userId, currentRole) {
-    document.getElementById('role-user-id').value = userId;
-    document.getElementById('role-select').value = currentRole;
-    showModal('role-modal');
+function displayPasswords() {
+    const container = document.getElementById('passwords-list');
+    const emptyState = document.getElementById('empty-state');
+
+    let filteredPasswords = passwords;
+    if (currentFilter !== 'all') {
+        filteredPasswords = passwords.filter(p => p.category === currentFilter);
+    }
+
+    if (filteredPasswords.length === 0) {
+        container.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+    }
+
+    container.style.display = 'grid';
+    emptyState.style.display = 'none';
+
+    container.innerHTML = filteredPasswords.map(password => `
+        <div class="password-card">
+            <div class="password-card-header">
+                <div class="password-card-icon">
+                    ${getCategoryIcon(password.category)}
+                </div>
+                <div class="password-card-info">
+                    <h3>${escapeHtml(password.name)}</h3>
+                    <p>${escapeHtml(password.username)}</p>
+                </div>
+            </div>
+            <div class="password-card-actions">
+                <button onclick="copyPasswordById('${password._id}')" class="btn-action" title="Copy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button onclick="editPassword('${password._id}')" class="btn-action" title="Edit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+                <button onclick="deletePassword('${password._id}')" class="btn-action" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
 }
 
-/**
- * Updates a user's role
- */
-async function updateUserRole(event) {
-    event.preventDefault();
+function updateCategoryCounts() {
+    const counts = {
+        all: passwords.length,
+        social: passwords.filter(p => p.category === 'social').length,
+        email: passwords.filter(p => p.category === 'email').length,
+        banking: passwords.filter(p => p.category === 'banking').length,
+        work: passwords.filter(p => p.category === 'work').length,
+        shopping: passwords.filter(p => p.category === 'shopping').length
+    };
 
-    var userId = document.getElementById('role-user-id').value;
-    var role = document.getElementById('role-select').value;
+    Object.entries(counts).forEach(([category, count]) => {
+        const el = document.getElementById(`count-${category}`);
+        if (el) {
+            el.textContent = count;
+        }
+    });
+}
+
+function filterByCategory(category) {
+    currentFilter = category;
+
+    // Update active state
+    document.querySelectorAll('#categories-list li').forEach(li => {
+        li.classList.remove('active');
+    });
+    event.target.closest('li').classList.add('active');
+
+    displayPasswords();
+}
+
+function searchPasswords() {
+    const query = document.getElementById('search-input').value.toLowerCase();
+
+    if (!query) {
+        displayPasswords();
+        return;
+    }
+
+    const filtered = passwords.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.username.toLowerCase().includes(query) ||
+        (p.url && p.url.toLowerCase().includes(query))
+    );
+
+    const container = document.getElementById('passwords-list');
+    const emptyState = document.getElementById('empty-state');
+
+    if (filtered.length === 0) {
+        container.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+    }
+
+    container.style.display = 'grid';
+    emptyState.style.display = 'none';
+
+    container.innerHTML = filtered.map(password => `
+        <div class="password-card">
+            <div class="password-card-header">
+                <div class="password-card-icon">
+                    ${getCategoryIcon(password.category)}
+                </div>
+                <div class="password-card-info">
+                    <h3>${escapeHtml(password.name)}</h3>
+                    <p>${escapeHtml(password.username)}</p>
+                </div>
+            </div>
+            <div class="password-card-actions">
+                <button onclick="copyPasswordById('${password._id}')" class="btn-action" title="Copy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button onclick="editPassword('${password._id}')" class="btn-action" title="Edit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+                <button onclick="deletePassword('${password._id}')" class="btn-action" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function copyPasswordById(id) {
+    const password = passwords.find(p => p._id === id);
+    if (!password) return;
 
     try {
-        var response = await fetch(API_URL + '/auth/users/' + userId + '/role', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({ role: role })
-        });
-
-        var data = await response.json();
-
-        if (!response.ok) {
-            showToast(data.error || 'Update error', 'error');
-            return;
-        }
-
-        closeModal('role-modal');
-        loadUsers();
-        showToast('Role updated', 'success');
-
+        await navigator.clipboard.writeText(password.password);
+        showToast('Password copied!', 'success');
     } catch (error) {
-        showToast('Server connection error', 'error');
+        showToast('Copy error', 'error');
     }
 }
 
-/**
- * Deletes a user (admin only)
- */
-async function deleteUser(userId) {
-    if (!confirm('Are you sure you want to delete this user?')) {
+function editPassword(id) {
+    const password = passwords.find(p => p._id === id);
+    if (!password) return;
+
+    document.getElementById('password-modal-title').textContent = 'Edit password';
+    document.getElementById('password-id').value = password._id;
+    document.getElementById('password-name').value = password.name;
+    document.getElementById('password-url').value = password.url || '';
+    document.getElementById('password-username').value = password.username;
+    document.getElementById('password-value').value = password.password;
+    document.getElementById('password-category').value = password.category;
+    document.getElementById('password-notes').value = password.notes || '';
+
+    document.getElementById('password-modal').style.display = 'flex';
+}
+
+async function deletePassword(id) {
+    if (!confirm('Are you sure you want to delete this password?')) {
         return;
     }
 
     try {
-        var response = await fetch(API_URL + '/auth/users/' + userId, {
+        const response = await fetch(`${API_URL}/passwords/${id}`, {
             method: 'DELETE',
-            credentials: 'include'
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
         });
 
-        var data = await response.json();
-
-        if (!response.ok) {
-            showToast(data.error || 'Deletion error', 'error');
-            return;
+        if (response.ok) {
+            await loadPasswords();
+            showToast('Password deleted', 'success');
+        } else {
+            showToast('Deletion error', 'error');
         }
-
-        loadUsers();
-        showToast('User deleted', 'success');
-
     } catch (error) {
-        showToast('Server connection error', 'error');
+        showToast('Connection error', 'error');
     }
 }
 
-// ============================================
-// UTILITIES
-// ============================================
+async function handleSavePassword(e) {
+    e.preventDefault();
 
-/**
- * Displays an error message in an HTML element
- */
-function showError(element, message) {
-    if (element) {
-        element.textContent = message;
-        element.style.display = 'block';
+    const id = document.getElementById('password-id').value;
+    const passwordData = {
+        name: document.getElementById('password-name').value,
+        url: document.getElementById('password-url').value,
+        username: document.getElementById('password-username').value,
+        password: document.getElementById('password-value').value,
+        category: document.getElementById('password-category').value,
+        notes: document.getElementById('password-notes').value
+    };
+
+    try {
+        const url = id ? `${API_URL}/passwords/${id}` : `${API_URL}/passwords`;
+        const method = id ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(passwordData)
+        });
+
+        if (response.ok) {
+            closePasswordModal();
+            await loadPasswords();
+            showToast(id ? 'Password updated' : 'Password added', 'success');
+        } else {
+            showToast('Save error', 'error');
+        }
+    } catch (error) {
+        showToast('Connection error', 'error');
     }
 }
 
-/**
- * Displays a toast notification
- */
-function showToast(message, type) {
-    var toast = document.getElementById('toast');
+async function generatePasswordForModal() {
+    try {
+        const response = await fetch(`${API_URL}/generator/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: 'random',
+                length: 16,
+                includeUppercase: true,
+                includeLowercase: true,
+                includeNumbers: true,
+                includeSymbols: true
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('password-value').value = data.password;
+            showToast(`Strength: ${translateStrength(data.strength)} (${Math.round(data.entropy)} bits)`, 'success');
+        }
+    } catch (error) {
+        console.error('Error generating password:', error);
+    }
+}
+
+function togglePasswordVisibility(fieldId) {
+    const field = document.getElementById(fieldId);
+    field.type = field.type === 'password' ? 'text' : 'password';
+}
+
+function sortPasswords() {
+    const sortBy = document.getElementById('sort-select').value;
+
+    switch(sortBy) {
+        case 'name':
+            passwords.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+        case 'category':
+            passwords.sort((a, b) => a.category.localeCompare(b.category));
+            break;
+        case 'recent':
+        default:
+            passwords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            break;
+    }
+
+    displayPasswords();
+}
+
+// Export Functions
+async function exportData(format) {
+    try {
+        const response = await fetch(`${API_URL}/export/passwords/${format}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tamycs-shield-passwords-${Date.now()}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            closeExportModal();
+            showToast('Export successful!', 'success');
+        } else {
+            showToast('Export error', 'error');
+        }
+    } catch (error) {
+        showToast('Connection error', 'error');
+    }
+}
+
+// Utility Functions
+function getCategoryIcon(category) {
+    const icons = {
+        'social': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+        'email': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>',
+        'banking': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>',
+        'work': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
+        'shopping': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
+        'other': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>'
+    };
+    return icons[category] || icons['other'];
+}
+
+function getCategoryLabel(category) {
+    const labels = {
+        'social': 'Social Networks',
+        'email': 'Email',
+        'banking': 'Banking',
+        'work': 'Work',
+        'shopping': 'Shopping',
+        'other': 'Other'
+    };
+    return labels[category] || category;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
     toast.textContent = message;
-    toast.className = 'toast toast-' + (type || 'info') + ' show';
+    toast.className = `toast toast-${type} show`;
 
-    setTimeout(function() {
+    setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
 }
 
-/**
- * Escapes HTML characters to prevent XSS attacks
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// Close modals when clicking outside
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
+    }
+}
+
+// Close modals with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+    }
+});
+
+// Dashboard Generator Functions
+function showGeneratorSection() {
+    document.getElementById('generator-dashboard-modal').style.display = 'flex';
+    generateDashboardPasswords();
+}
+
+function closeGeneratorDashboardModal() {
+    document.getElementById('generator-dashboard-modal').style.display = 'none';
+}
+
+function switchDashboardGeneratorTab(mode) {
+    // Update tab active state
+    document.querySelectorAll('#generator-dashboard-modal .generator-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.tab === mode) {
+            tab.classList.add('active');
+        }
+    });
+
+    // Show/hide generator content
+    document.querySelectorAll('#generator-dashboard-modal .generator-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    if (mode === 'random') {
+        document.getElementById('dashboard-random-generator').classList.add('active');
+        generateDashboardPasswords();
+    } else {
+        document.getElementById('dashboard-memorable-generator').classList.add('active');
+        generateDashboardMemorablePasswords();
+    }
+}
+
+function updateDashboardRandomLength(value) {
+    document.getElementById('dashboard-random-length-value').textContent = value;
+    generateDashboardPasswords();
+}
+
+function updateDashboardMemorableWords(value) {
+    document.getElementById('dashboard-memorable-words-value').textContent = value;
+    generateDashboardMemorablePasswords();
+}
+
+async function generateDashboardPasswords() {
+    const length = parseInt(document.getElementById('dashboard-random-length').value);
+    const useUppercase = document.getElementById('dashboard-random-uppercase').checked;
+    const useLowercase = document.getElementById('dashboard-random-lowercase').checked;
+    const useNumbers = document.getElementById('dashboard-random-numbers').checked;
+    const useSymbols = document.getElementById('dashboard-random-symbols').checked;
+
+    const options = {
+        mode: 'random',
+        length,
+        includeUppercase: useUppercase,
+        includeLowercase: useLowercase,
+        includeNumbers: useNumbers,
+        includeSymbols: useSymbols
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authToken ? `Bearer ${authToken}` : ''
+            },
+            body: JSON.stringify(options)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'dashboard-password-suggestions-list');
+        }
+    } catch (error) {
+        console.error('Error generating passwords:', error);
+    }
+}
+
+async function generateDashboardMemorablePasswords() {
+    const wordCount = parseInt(document.getElementById('dashboard-memorable-words').value);
+    const separator = document.getElementById('dashboard-memorable-separator').value;
+    const capitalizeWords = document.getElementById('dashboard-memorable-capitalize').checked;
+    const includeNumbers = document.getElementById('dashboard-memorable-numbers').checked;
+
+    const options = {
+        mode: 'memorable',
+        wordCount,
+        separator,
+        capitalizeWords,
+        includeNumbers
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/generator/multiple`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authToken ? `Bearer ${authToken}` : ''
+            },
+            body: JSON.stringify(options)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayPasswordSuggestions(data.passwords, 'dashboard-memorable-suggestions-list');
+        }
+    } catch (error) {
+        console.error('Error generating memorable passwords:', error);
+    }
 }

@@ -1,142 +1,69 @@
-/**
- * User Account Management Application
- * Express server with MongoDB
- *
- * Secure Programming Project - ESAIP
- */
-
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+require('dotenv').config();
 
-// Import routes
 const authRoutes = require('./routes/auth');
+const passwordRoutes = require('./routes/passwords');
+const gamificationRoutes = require('./routes/gamification');
+const exportRoutes = require('./routes/export');
+const generatorRoutes = require('./routes/generator');
+const { loginLimiter } = require('./middleware/rateLimit');
 
-// Initialize Express application
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============================================
-// SECURITY MIDDLEWARES
-// ============================================
-
-// Helmet adds security HTTP headers
+// Security middleware
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:"],
-            connectSrc: ["'self'"],
-            fontSrc: ["'self'"],
-            objectSrc: ["'none'"],
-            frameAncestors: ["'none'"]
-        }
-    },
-    // Clickjacking protection
-    frameguard: { action: 'deny' },
-    // Force HTTPS
-    hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true
-    },
-    // Disable MIME sniffing
-    noSniff: true,
-    // XSS protection
-    xssFilter: true
+  contentSecurityPolicy: false // Allow inline scripts for development
 }));
+app.use(cors());
+app.use(express.json());
 
-// CORS configuration with credentials for cookies
-app.use(cors({
-    origin: process.env.CORS_ORIGIN || true, // true allows all origins in dev
-    credentials: true // Allow cookies to be sent
-}));
-
-// Cookie parser (required to read the JWT token)
-app.use(cookieParser());
-
-// JSON parser for requests
-app.use(express.json({ limit: '10kb' })); // Limit request size
-
-// ============================================
-// STATIC FILES
-// ============================================
-
-// Serve files from the public folder
+// Serve static files
 app.use(express.static(path.join(__dirname, '../public')));
 
-// ============================================
-// API ROUTES
-// ============================================
-
-// Authentication routes
+// Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/passwords', passwordRoutes);
+app.use('/api/gamification', gamificationRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/generator', generatorRoutes);
 
-// Health endpoint to check that the server is running
+// Health check endpoint
 app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'OK',
-        message: 'Server is running',
-        timestamp: new Date().toISOString()
-    });
+  res.status(200).json({ status: 'OK', message: 'TAMYCS Shield is running' });
 });
-
-// Catch-all route for SPA (returns index.html)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
-});
-
-// ============================================
-// ERROR HANDLING
-// ============================================
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
-
-    // Do not expose error details in production
-    const isDev = process.env.NODE_ENV !== 'production';
-
-    res.status(err.status || 500).json({
-        error: isDev ? err.message : 'Internal server error'
-    });
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    error: {
+      message: err.message || 'Internal Server Error'
+    }
+  });
 });
 
-// ============================================
-// DATABASE CONNECTION
-// ============================================
-
+// Database connection
 const connectDB = async () => {
-    try {
-        const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/secureapp';
-
-        await mongoose.connect(mongoURI, {
-            // Recommended connection options
-        });
-
-        console.log('MongoDB connected successfully');
-    } catch (error) {
-        console.error('MongoDB connection error:', error.message);
-        process.exit(1);
-    }
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tamycs-shield');
+    console.log('MongoDB connected successfully');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    process.exit(1);
+  }
 };
 
-// ============================================
-// START SERVER
-// ============================================
-
+// Start server
 const startServer = async () => {
-    await connectDB();
-
-    app.listen(PORT, () => {
-        console.log(`Server started on port ${PORT}`);
-        console.log(`URL: http://localhost:${PORT}`);
-    });
+  await connectDB();
+  app.listen(PORT, () => {
+    console.log(`TAMYCS Shield server running on port ${PORT}`);
+  });
 };
 
 startServer();
