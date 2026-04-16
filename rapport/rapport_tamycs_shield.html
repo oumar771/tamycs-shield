@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+  body {
+    font-family: "Times New Roman", serif;
+    font-size: 12pt;
+    margin: 2.5cm 2.5cm 2.5cm 3cm;
+    color: #000;
+    line-height: 1.6;
+  }
+  h1 { font-size: 20pt; color: #1a56a0; text-align: center; margin-top: 40px; }
+  h2 { font-size: 14pt; color: #1a56a0; margin-top: 30px; border-bottom: 1px solid #1a56a0; padding-bottom: 4px; }
+  h3 { font-size: 12pt; color: #333; margin-top: 20px; }
+  .cover { text-align: center; padding: 80px 0 60px 0; }
+  .cover img { width: 120px; } /* Remplacer par le logo de l'université */
+  .cover p { margin: 6px 0; }
+  .cover .title { font-size: 24pt; font-weight: bold; color: #1a56a0; margin: 30px 0; }
+  .cover .subtitle { font-size: 16pt; font-weight: bold; }
+  .toc a { color: #1a56a0; text-decoration: none; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 11pt; }
+  th { background: #1a56a0; color: white; padding: 8px; text-align: left; }
+  td { border: 1px solid #ccc; padding: 7px; }
+  tr:nth-child(even) td { background: #f0f5ff; }
+  code, pre { background: #f5f5f5; font-family: "Courier New", monospace; font-size: 10pt; padding: 2px 6px; border-radius: 3px; }
+  pre { padding: 12px; border-left: 4px solid #1a56a0; overflow-x: auto; }
+  .figure-label { text-align: center; font-style: italic; color: #555; margin-top: 4px; font-size: 11pt; }
+  .image-placeholder {
+    border: 2px dashed #1a56a0;
+    background: #eef4ff;
+    text-align: center;
+    padding: 40px 20px;
+    margin: 20px auto;
+    border-radius: 6px;
+    color: #1a56a0;
+    font-weight: bold;
+    font-size: 11pt;
+    max-width: 700px;
+  }
+  .image-placeholder span { display: block; color: #555; font-weight: normal; margin-top: 8px; font-size: 10pt; }
+  ul, ol { margin-left: 20px; }
+  li { margin: 4px 0; }
+  .page-break { page-break-after: always; }
+  blockquote { border-left: 4px solid #1a56a0; margin: 16px 0; padding: 8px 16px; background: #f0f5ff; }
+  .badge { display: inline-block; background: #1a56a0; color: white; border-radius: 4px; padding: 2px 8px; font-size: 10pt; margin: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ===== PAGE DE GARDE ===== -->
+<div class="cover">
+  <p><strong>ESAIP La Salle — École Supérieure d'Angers et d'Informatique</strong></p>
+  <p>Bachelor 3 Cybersécurité</p>
+  <p>Année universitaire 2025 / 2026</p>
+
+  <br><br><br>
+
+  <div class="image-placeholder">
+    📷 INSÉRER ICI : Logo de l'école ESAIP
+    <span>Fichier logo ESAIP — centré, largeur ~180px</span>
+  </div>
+
+  <br><br>
+
+  <div class="title">TAMYCS Shield — PassVault</div>
+  <div class="subtitle">Gestionnaire de mots de passe sécurisé conforme ANSSI</div>
+
+  <br><br>
+
+  <p><strong>Rapport de projet — Web Programming</strong></p>
+
+  <br><br><br>
+
+  <p><strong>Auteurs :</strong></p>
+  <p>Oumar Touré &nbsp;|&nbsp; Rodney &nbsp;|&nbsp; Fresnel</p>
+
+  <br><br>
+
+  <p>Semestre Summer 2025/2026</p>
+  <p>Promotion Bachelor 3 Cybersécurité</p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== TABLE DES MATIÈRES ===== -->
+<h2>Table des matières</h2>
+<ol class="toc">
+  <li><a href="#intro">Introduction</a></li>
+  <li><a href="#objectifs">Objectifs du projet</a></li>
+  <li><a href="#choix-tech">Choix technologiques</a></li>
+  <li><a href="#architecture">Architecture et Site Map</a></li>
+  <li><a href="#bdd">Base de données</a></li>
+  <li><a href="#structure">Structure du site et fonctionnalités</a></li>
+  <li><a href="#securite">Sécurité — conformité ANSSI</a></li>
+  <li><a href="#gamification">Système de gamification</a></li>
+  <li><a href="#tests">Tests et qualité du code</a></li>
+  <li><a href="#conclusion">Conclusion</a></li>
+  <li><a href="#references">Références</a></li>
+</ol>
+
+<div class="page-break"></div>
+
+<!-- ===== 1. INTRODUCTION ===== -->
+<h2 id="intro">1. Introduction</h2>
+
+<p>
+Dans un contexte numérique où les cybermenaces se multiplient et où chaque utilisateur gère en moyenne plus de quatre-vingts comptes en ligne, la gestion sécurisée des mots de passe est devenue un enjeu critique. Des études récentes montrent que plus de 80 % des violations de données sont liées à des mots de passe faibles, réutilisés ou compromis.
+</p>
+<p>
+C'est dans ce contexte que le projet <strong>TAMYCS Shield — PassVault</strong> a été conçu et développé dans le cadre du cours de Web Programming du Bachelor 3 Cybersécurité à ESAIP La Salle. L'objectif principal est de proposer une application web complète permettant aux utilisateurs de générer, stocker et gérer leurs mots de passe de façon sécurisée, en respectant les recommandations de l'<strong>ANSSI</strong> (Agence Nationale de la Sécurité des Systèmes d'Information).
+</p>
+<p>
+L'application offre une interface web moderne, une API REST sécurisée, un système de chiffrement de bout en bout des données, ainsi qu'un système de gamification pour encourager l'adoption de bonnes pratiques de sécurité.
+</p>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture d'écran de la page d'accueil (section héro) de TAMYCS Shield
+  <span>URL locale : http://localhost:3000 — Section hero avec générateur de mots de passe visible</span>
+</div>
+<p class="figure-label">Fig. 1. Page d'accueil — TAMYCS Shield PassVault</p>
+
+<!-- ===== 2. OBJECTIFS ===== -->
+<h2 id="objectifs">2. Objectifs du projet</h2>
+
+<p>Le projet vise à répondre aux besoins concrets en matière de cybersécurité personnelle et professionnelle :</p>
+
+<h3>2.1 Objectifs fonctionnels</h3>
+<ul>
+  <li>Permettre à un utilisateur de <strong>créer un compte sécurisé</strong> et de s'authentifier via un mot de passe maître fort.</li>
+  <li>Fournir un <strong>coffre-fort de mots de passe</strong> chiffré (vault) pour stocker des identifiants liés à différents services.</li>
+  <li>Proposer un <strong>générateur de mots de passe</strong> en mode aléatoire ou mémorisable.</li>
+  <li>Permettre la <strong>catégorisation</strong>, la recherche et le filtrage des mots de passe.</li>
+  <li>Offrir un <strong>export des données</strong> en format CSV et JSON.</li>
+  <li>Intégrer un système de <strong>gamification</strong> (points, niveaux, badges) pour motiver l'utilisateur.</li>
+</ul>
+
+<h3>2.2 Objectifs de sécurité</h3>
+<ul>
+  <li>Chiffrement des mots de passe stockés avec <strong>AES-256-GCM</strong>.</li>
+  <li>Hachage du mot de passe maître avec <strong>bcrypt (12 rounds)</strong>.</li>
+  <li>Authentification par token <strong>JWT</strong> à durée limitée (15 minutes).</li>
+  <li>Validation des entrées et politique de mot de passe <strong>conforme ANSSI</strong>.</li>
+  <li>Protection contre les attaques par force brute via <strong>rate limiting</strong>.</li>
+  <li>En-têtes HTTP sécurisés via <strong>Helmet.js</strong>.</li>
+</ul>
+
+<!-- ===== 3. CHOIX TECHNOLOGIQUES ===== -->
+<h2 id="choix-tech">3. Choix technologiques</h2>
+
+<h3>3.1 Comparaison des approches</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Approche</th>
+      <th>Exemples</th>
+      <th>Avantages</th>
+      <th>Inconvénients</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Site builders</strong></td>
+      <td>Wix, Weebly, Jimdo</td>
+      <td>Rapide, sans code</td>
+      <td>Pas de contrôle sécurité, pas d'API custom, no chiffrement personnalisé</td>
+    </tr>
+    <tr>
+      <td><strong>CMS</strong></td>
+      <td>WordPress, Drupal, Joomla</td>
+      <td>Extensible, communauté large</td>
+      <td>Surcharge de plugins, moins adapté aux apps critiques, surface d'attaque élevée</td>
+    </tr>
+    <tr>
+      <td><strong>HTML/CSS/JS + Backend custom</strong></td>
+      <td>Node.js, Express, MongoDB</td>
+      <td>Contrôle total, sécurité maîtrisée, architecture adaptée</td>
+      <td>Nécessite plus de développement</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>3.2 Choix retenu : Stack Node.js / Express / MongoDB</h3>
+
+<blockquote>
+  <strong>Motivation :</strong> Pour un gestionnaire de mots de passe, le contrôle total sur le chiffrement, l'authentification et la validation des données est non négociable. Une approche HTML/CSS/JavaScript côté client couplée à une API REST Node.js offre la flexibilité et la granularité nécessaires pour implémenter les recommandations ANSSI. L'utilisation de MongoDB permet un stockage flexible des mots de passe et des métadonnées.
+</blockquote>
+
+<table>
+  <thead>
+    <tr><th>Couche</th><th>Technologie</th><th>Version</th><th>Rôle</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Runtime</td><td>Node.js</td><td>v18+</td><td>Environnement d'exécution serveur</td></tr>
+    <tr><td>Framework</td><td>Express.js</td><td>4.18.2</td><td>Serveur HTTP et routage API</td></tr>
+    <tr><td>Base de données</td><td>MongoDB + Mongoose</td><td>8.0.0</td><td>Stockage NoSQL des données</td></tr>
+    <tr><td>Authentification</td><td>JWT (jsonwebtoken)</td><td>9.0.2</td><td>Tokens d'accès sécurisés</td></tr>
+    <tr><td>Hachage</td><td>bcrypt</td><td>5.1.1</td><td>Hachage du mot de passe maître</td></tr>
+    <tr><td>Chiffrement</td><td>AES-256-GCM (crypto node)</td><td>natif</td><td>Chiffrement des mots de passe</td></tr>
+    <tr><td>Sécurité HTTP</td><td>Helmet.js</td><td>7.1.0</td><td>En-têtes de sécurité HTTP</td></tr>
+    <tr><td>Rate limiting</td><td>express-rate-limit</td><td>7.1.5</td><td>Limitation des tentatives de connexion</td></tr>
+    <tr><td>Validation</td><td>express-validator</td><td>7.0.1</td><td>Validation des données entrantes</td></tr>
+    <tr><td>Frontend</td><td>HTML5 / CSS3 / JS Vanilla</td><td>—</td><td>Interface utilisateur SPA légère</td></tr>
+    <tr><td>Dev tools</td><td>nodemon, jest, eslint</td><td>—</td><td>Développement, tests, qualité</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== 4. ARCHITECTURE ===== -->
+<h2 id="architecture">4. Architecture et Site Map</h2>
+
+<h3>4.1 Architecture globale</h3>
+
+<p>L'application suit une architecture <strong>MVC (Modèle - Vue - Contrôleur)</strong> avec une séparation claire entre le frontend statique et l'API REST backend.</p>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Schéma d'architecture (ou capture du diagramme ci-dessous)
+  <span>Dessine ou capture un schéma montrant : Navigateur → Frontend HTML/JS → API REST Node.js → MongoDB</span>
+</div>
+<p class="figure-label">Fig. 2. Architecture générale de TAMYCS Shield</p>
+
+<pre>
+┌───────────────────────────────────────────────────────────────┐
+│                     CLIENT (Navigateur)                       │
+│          public/index.html  +  app.js  +  style.css           │
+└────────────────────────┬──────────────────────────────────────┘
+                         │  HTTP / JSON
+┌────────────────────────▼──────────────────────────────────────┐
+│                  API REST — Express.js                        │
+│  /api/auth  /api/passwords  /api/generator  /api/gamification │
+│  /api/export                                                  │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  Middleware : auth.js · rateLimit.js · validators.js    │  │
+│  │  Controllers : auth · password · generator · export     │  │
+│  │  Services : passwordGenerator · crypto · jwt · entropy  │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└────────────────────────┬──────────────────────────────────────┘
+                         │  Mongoose ODM
+┌────────────────────────▼──────────────────────────────────────┐
+│            MongoDB — Base de données                          │
+│   Collections : users · passwords · categories               │
+│                 gamifications · passwordhistories             │
+└───────────────────────────────────────────────────────────────┘
+</pre>
+
+<h3>4.2 Site map — Arborescence des pages</h3>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture d'écran du site map (ou créer un diagramme simple avec draw.io / Miro)
+  <span>Arborescence : Page d'accueil (publique) → Dashboard (authentifié) → Coffre-fort / Générateur / Export / Gamification</span>
+</div>
+<p class="figure-label">Fig. 3. Site map — TAMYCS Shield</p>
+
+<p>L'application est organisée en deux zones principales :</p>
+<ul>
+  <li><strong>Zone publique</strong> : Page d'accueil avec le générateur de mots de passe, formulaires de connexion et d'inscription.</li>
+  <li><strong>Zone authentifiée (Dashboard)</strong> : Coffre-fort, recherche, catégories, générateur avancé, export, gamification.</li>
+</ul>
+
+<h3>4.3 Structure des fichiers du projet</h3>
+
+<pre>
+tamycs-shield/
+├── public/                  → Frontend (HTML, CSS, JS)
+│   ├── index.html           → SPA principale
+│   ├── css/style.css        → Styles (1128 lignes)
+│   └── js/
+│       ├── app.js           → Logique frontend (842 lignes)
+│       └── theme.js         → Gestion thème clair/sombre
+├── src/                     → Backend Node.js
+│   ├── index.js             → Point d'entrée du serveur
+│   ├── controllers/         → Logique métier (7 contrôleurs)
+│   ├── models/              → Schémas Mongoose (5 modèles)
+│   ├── middleware/          → auth, rateLimit, validators
+│   ├── routes/              → Définitions API (5 fichiers)
+│   ├── services/            → Générateur de mots de passe
+│   ├── utils/               → crypto, jwt, entropy
+│   └── data/wordlist.js     → Liste de mots mémorisables
+├── package.json
+└── README.md
+</pre>
+
+<!-- ===== 5. BASE DE DONNÉES ===== -->
+<h2 id="bdd">5. Base de données</h2>
+
+<p>L'application utilise <strong>MongoDB</strong> avec le ODM <strong>Mongoose</strong> pour la définition des schémas et la validation des données. Cinq collections sont utilisées.</p>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture de MongoDB Compass ou Mongo Atlas montrant les collections
+  <span>Collections visibles : users, passwords, categories, gamifications, passwordhistories</span>
+</div>
+<p class="figure-label">Fig. 4. Collections MongoDB — TAMYCS Shield</p>
+
+<h3>5.1 Modèle User</h3>
+<table>
+  <thead><tr><th>Champ</th><th>Type</th><th>Contrainte</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>_id</td><td>ObjectId</td><td>PK auto</td><td>Identifiant unique</td></tr>
+    <tr><td>email</td><td>String</td><td>Unique, requis</td><td>Adresse email de connexion</td></tr>
+    <tr><td>masterPassword</td><td>String</td><td>Requis, haché</td><td>Mot de passe maître (bcrypt 12 rounds)</td></tr>
+    <tr><td>name</td><td>String</td><td>Optionnel</td><td>Nom d'affichage</td></tr>
+    <tr><td>createdAt</td><td>Date</td><td>Default: now</td><td>Date d'inscription</td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 Modèle Password (coffre-fort)</h3>
+<table>
+  <thead><tr><th>Champ</th><th>Type</th><th>Contrainte</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>_id</td><td>ObjectId</td><td>PK auto</td><td>Identifiant unique</td></tr>
+    <tr><td>userId</td><td>ObjectId</td><td>Ref: User, indexé</td><td>Lien vers le propriétaire</td></tr>
+    <tr><td>title</td><td>String</td><td>Requis</td><td>Nom du site/service</td></tr>
+    <tr><td>username</td><td>String</td><td>Optionnel</td><td>Identifiant de connexion</td></tr>
+    <tr><td>encryptedPassword</td><td>Object</td><td>Requis</td><td>{ encrypted, iv, salt, authTag } — AES-256-GCM</td></tr>
+    <tr><td>url</td><td>String</td><td>Optionnel</td><td>URL du service</td></tr>
+    <tr><td>notes</td><td>String</td><td>Optionnel</td><td>Notes libres</td></tr>
+    <tr><td>category</td><td>String</td><td>Default: Other</td><td>Catégorie du mot de passe</td></tr>
+    <tr><td>createdAt / updatedAt</td><td>Date</td><td>Auto</td><td>Horodatages</td></tr>
+  </tbody>
+</table>
+
+<h3>5.3 Modèle Gamification</h3>
+<table>
+  <thead><tr><th>Champ</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>userId</td><td>ObjectId</td><td>Lien unique vers l'utilisateur</td></tr>
+    <tr><td>points</td><td>Number</td><td>Score total accumulé</td></tr>
+    <tr><td>level</td><td>Number</td><td>Calculé : floor(points/100) + 1</td></tr>
+    <tr><td>badges</td><td>Array</td><td>Liste des badges débloqués (nom, description, icône, date)</td></tr>
+    <tr><td>achievements</td><td>Object</td><td>Compteurs : mots de passe créés, forts générés, catégories utilisées…</td></tr>
+    <tr><td>statistics</td><td>Object</td><td>Total générés, sauvegardés, force moyenne, catégorie la plus utilisée</td></tr>
+  </tbody>
+</table>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Schéma des relations entre collections (diagramme ERD simplifié)
+  <span>User → Passwords (1:N), User → Gamification (1:1), User → PasswordHistory (1:N), User → Categories (1:N)</span>
+</div>
+<p class="figure-label">Fig. 5. Relations entre les collections MongoDB</p>
+
+<!-- ===== 6. STRUCTURE DU SITE ET FONCTIONNALITÉS ===== -->
+<h2 id="structure">6. Structure du site et fonctionnalités</h2>
+
+<h3>6.1 Zone publique — Page d'accueil</h3>
+<p>La page d'accueil est accessible sans authentification. Elle présente :</p>
+<ul>
+  <li>Une section <strong>héro</strong> avec description de l'application et boutons d'appel à l'action.</li>
+  <li>Un <strong>générateur de mots de passe</strong> public avec 8 suggestions affichées, chacune avec : niveau de force, entropie en bits, temps de crack estimé, bouton de copie.</li>
+  <li>Une section <strong>fonctionnalités clés</strong> présentant les avantages de l'application.</li>
+</ul>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture d'écran du générateur de mots de passe (zone publique)
+  <span>Section "Generate a Password" avec les 8 suggestions générées et les badges de force</span>
+</div>
+<p class="figure-label">Fig. 6. Générateur de mots de passe — Zone publique</p>
+
+<h3>6.2 Authentification</h3>
+<p>Deux modales sont disponibles :</p>
+<ul>
+  <li><strong>Inscription</strong> : Nom, email, mot de passe maître + confirmation. Validation ANSSI (12 caractères minimum, majuscule, minuscule, chiffre, symbole).</li>
+  <li><strong>Connexion</strong> : Email + mot de passe maître. Limité à 5 tentatives par 15 minutes (protection brute force).</li>
+</ul>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Captures d'écran des modales de connexion et d'inscription
+  <span>Modal login + Modal register, afficher la validation des champs en temps réel si possible</span>
+</div>
+<p class="figure-label">Fig. 7. Modales d'authentification — Connexion (gauche) et Inscription (droite)</p>
+
+<h3>6.3 Dashboard — Coffre-fort de mots de passe</h3>
+<p>Après authentification, l'utilisateur accède au tableau de bord :</p>
+<ul>
+  <li><strong>Barre latérale</strong> : bouton "Ajouter un mot de passe", barre de recherche en temps réel, filtre par catégorie avec compteurs, accès au générateur et à l'export.</li>
+  <li><strong>Grille des mots de passe</strong> : cartes affichant le titre, l'identifiant, la catégorie, avec des boutons copier / modifier / supprimer.</li>
+  <li><strong>Tri</strong> : par date récente, nom A-Z, catégorie.</li>
+</ul>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture d'écran du dashboard principal (coffre-fort avec des mots de passe visibles)
+  <span>Vue dashboard avec la sidebar, les cartes mots de passe et la barre de recherche</span>
+</div>
+<p class="figure-label">Fig. 8. Dashboard — Coffre-fort de mots de passe</p>
+
+<h3>6.4 Ajout et modification d'un mot de passe</h3>
+<p>Un modal permet d'ajouter ou modifier une entrée dans le coffre-fort :</p>
+<ul>
+  <li>Champs : nom du site, URL, identifiant, mot de passe (avec indicateur de force), catégorie, notes.</li>
+  <li>Le mot de passe est chiffré côté serveur avant stockage (AES-256-GCM).</li>
+</ul>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture de la modale d'ajout de mot de passe
+  <span>Modal "Add Password" avec tous les champs visibles et l'indicateur de force du mot de passe</span>
+</div>
+<p class="figure-label">Fig. 9. Modal d'ajout d'un mot de passe avec indicateur de force</p>
+
+<h3>6.5 Export des données</h3>
+<p>L'utilisateur peut exporter ses données via deux formats :</p>
+<ul>
+  <li><strong>CSV</strong> : Compatible avec les tableurs, avec BOM UTF-8 pour l'encodage des caractères spéciaux.</li>
+  <li><strong>JSON</strong> : Format structuré pour import dans d'autres outils.</li>
+  <li><strong>Export complet</strong> : Nécessite la vérification du mot de passe maître.</li>
+</ul>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture de la modale d'export
+  <span>Modal export avec les options CSV / JSON et le champ mot de passe maître pour l'export complet</span>
+</div>
+<p class="figure-label">Fig. 10. Modal d'export des données</p>
+
+<h3>6.6 API REST — Résumé des endpoints</h3>
+
+<table>
+  <thead><tr><th>Méthode</th><th>Endpoint</th><th>Auth requise</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>POST</td><td>/api/auth/register</td><td>Non</td><td>Inscription</td></tr>
+    <tr><td>POST</td><td>/api/auth/login</td><td>Non</td><td>Connexion (rate-limited)</td></tr>
+    <tr><td>POST</td><td>/api/generator/generate</td><td>Non</td><td>Générer un mot de passe</td></tr>
+    <tr><td>POST</td><td>/api/generator/multiple</td><td>Non</td><td>Générer 8 suggestions</td></tr>
+    <tr><td>GET</td><td>/api/passwords</td><td>JWT</td><td>Lister les mots de passe</td></tr>
+    <tr><td>POST</td><td>/api/passwords</td><td>JWT</td><td>Ajouter un mot de passe</td></tr>
+    <tr><td>PUT</td><td>/api/passwords/:id</td><td>JWT</td><td>Modifier un mot de passe</td></tr>
+    <tr><td>DELETE</td><td>/api/passwords/:id</td><td>JWT</td><td>Supprimer un mot de passe</td></tr>
+    <tr><td>GET</td><td>/api/passwords/search</td><td>JWT</td><td>Recherche et filtrage</td></tr>
+    <tr><td>GET</td><td>/api/gamification/dashboard</td><td>JWT</td><td>Stats du tableau de bord</td></tr>
+    <tr><td>POST</td><td>/api/export/passwords/csv</td><td>JWT</td><td>Export CSV</td></tr>
+    <tr><td>POST</td><td>/api/export/passwords/json</td><td>JWT</td><td>Export JSON</td></tr>
+    <tr><td>GET</td><td>/health</td><td>Non</td><td>Vérification de l'état du serveur</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== 7. SÉCURITÉ ===== -->
+<h2 id="securite">7. Sécurité — Conformité ANSSI</h2>
+
+<h3>7.1 Politique de mots de passe (ANSSI)</h3>
+<p>La politique de mots de passe implémentée respecte les recommandations de l'ANSSI :</p>
+<ul>
+  <li>Longueur minimale : <strong>12 caractères</strong></li>
+  <li>Au moins <strong>1 lettre majuscule</strong> (A-Z)</li>
+  <li>Au moins <strong>1 lettre minuscule</strong> (a-z)</li>
+  <li>Au moins <strong>1 chiffre</strong> (0-9)</li>
+  <li>Au moins <strong>1 caractère spécial</strong> (!@#$%^&amp;*…)</li>
+</ul>
+
+<h3>7.2 Chiffrement des données — AES-256-GCM</h3>
+<p>Les mots de passe stockés dans le coffre-fort sont chiffrés avec l'algorithme <strong>AES-256-GCM</strong> (chiffrement authentifié) :</p>
+
+<pre>
+Processus de chiffrement :
+1. Génération d'un sel aléatoire de 64 octets (unique par entrée)
+2. Dérivation de clé : PBKDF2-SHA256, 100 000 itérations
+3. Vecteur d'initialisation (IV) aléatoire de 16 octets
+4. Chiffrement AES-256-GCM → cipher text + auth tag (16 octets)
+5. Stockage : { encrypted (hex), iv (hex), salt (hex), authTag (hex) }
+</pre>
+
+<h3>7.3 Hachage du mot de passe maître — bcrypt</h3>
+<p>Le mot de passe maître n'est jamais stocké en clair. Il est haché avec <strong>bcrypt, 12 rounds</strong>, soit environ 250 ms par tentative de vérification — rendant les attaques par force brute économiquement non viables.</p>
+
+<h3>7.4 Authentification JWT</h3>
+<p>Les tokens JWT (JSON Web Token) sont émis à la connexion avec une <strong>expiration de 15 minutes</strong>. Ils sont vérifiés à chaque requête protégée via un middleware <code>auth.js</code> dédié.</p>
+
+<h3>7.5 Rate limiting</h3>
+<p>L'endpoint de connexion est limité à <strong>5 tentatives par 15 minutes par adresse IP</strong> via <code>express-rate-limit</code>. Cela protège contre les attaques par dictionnaire et par force brute.</p>
+
+<h3>7.6 En-têtes HTTP de sécurité — Helmet.js</h3>
+<p>Le middleware <strong>Helmet.js</strong> active automatiquement les en-têtes HTTP de sécurité :</p>
+<ul>
+  <li><code>Content-Security-Policy</code> : protection XSS</li>
+  <li><code>X-Frame-Options: DENY</code> : protection clickjacking</li>
+  <li><code>X-Content-Type-Options: nosniff</code> : protection MIME sniffing</li>
+  <li><code>Strict-Transport-Security</code> : forçage HTTPS</li>
+</ul>
+
+<h3>7.7 Protection côté frontend</h3>
+<ul>
+  <li><strong>Échappement HTML</strong> : Toutes les données affichées côté client sont échappées pour prévenir les injections XSS.</li>
+  <li><strong>Messages d'erreur génériques</strong> : "Identifiants invalides" — aucune information sur l'existence du compte (anti-énumération).</li>
+</ul>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture des en-têtes HTTP de sécurité (onglet Network → Headers dans DevTools)
+  <span>Montrer les headers Helmet : X-Frame-Options, X-Content-Type-Options, etc.</span>
+</div>
+<p class="figure-label">Fig. 11. En-têtes HTTP de sécurité générés par Helmet.js</p>
+
+<!-- ===== 8. GAMIFICATION ===== -->
+<h2 id="gamification">8. Système de gamification</h2>
+
+<p>Un système de gamification a été intégré pour encourager l'adoption de bonnes pratiques de sécurité :</p>
+
+<h3>8.1 Points et niveaux</h3>
+<ul>
+  <li>Chaque action récompensée (sauvegarde d'un mot de passe fort, connexion, etc.) attribue des <strong>points</strong>.</li>
+  <li>Le <strong>niveau</strong> est calculé automatiquement : <code>floor(points / 100) + 1</code>.</li>
+</ul>
+
+<h3>8.2 Badges disponibles</h3>
+<table>
+  <thead><tr><th>Badge</th><th>Icône</th><th>Condition</th></tr></thead>
+  <tbody>
+    <tr><td>Premier Pas</td><td>🔑</td><td>Premier mot de passe créé</td></tr>
+    <tr><td>Gardien</td><td>🛡️</td><td>10 mots de passe créés</td></tr>
+    <tr><td>Expert</td><td>⭐</td><td>50 mots de passe créés</td></tr>
+    <tr><td>Pro de la sécurité</td><td>🔒</td><td>20 mots de passe forts générés</td></tr>
+    <tr><td>Organisateur</td><td>📁</td><td>5 catégories utilisées</td></tr>
+    <tr><td>Fidèle</td><td>📅</td><td>7 jours de connexion consécutifs</td></tr>
+  </tbody>
+</table>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture du tableau de bord de gamification (points, niveau, badges)
+  <span>Section gamification dans le dashboard avec les badges débloqués et le niveau affiché</span>
+</div>
+<p class="figure-label">Fig. 12. Tableau de bord de gamification — Points, niveaux et badges</p>
+
+<!-- ===== 9. TESTS ===== -->
+<h2 id="tests">9. Tests et qualité du code</h2>
+
+<h3>9.1 Stratégie de tests</h3>
+<p>Le projet intègre une suite de tests utilisant <strong>Jest</strong> et <strong>Supertest</strong> pour les tests d'intégration API.</p>
+
+<table>
+  <thead><tr><th>Type de test</th><th>Outil</th><th>Seuil requis</th></tr></thead>
+  <tbody>
+    <tr><td>Tests unitaires</td><td>Jest</td><td>80% branches, 80% fonctions</td></tr>
+    <tr><td>Tests d'intégration API</td><td>Supertest</td><td>85% lignes, 85% statements</td></tr>
+    <tr><td>Couverture de code</td><td>Jest --coverage</td><td>Global 85%+</td></tr>
+  </tbody>
+</table>
+
+<h3>9.2 Qualité du code</h3>
+<ul>
+  <li><strong>ESLint</strong> : Analyse statique du code JavaScript (configuration stricte).</li>
+  <li><strong>Prettier</strong> : Formatage automatique et cohérent du code.</li>
+  <li>Revue de code via <strong>Pull Requests GitHub</strong>.</li>
+</ul>
+
+<div class="image-placeholder">
+  📷 INSÉRER ICI : Capture du résultat de npm test (rapport de couverture Jest dans le terminal)
+  <span>Lancer "npm test" et faire une capture du tableau de couverture affiché dans le terminal</span>
+</div>
+<p class="figure-label">Fig. 13. Rapport de couverture de tests Jest</p>
+
+<!-- ===== 10. CONCLUSION ===== -->
+<h2 id="conclusion">10. Conclusion</h2>
+
+<p>
+Le projet <strong>TAMYCS Shield — PassVault</strong> constitue une réponse complète et structurée au problème de la gestion sécurisée des mots de passe. En adoptant une architecture MVC avec Node.js, Express et MongoDB, et en implémentant des standards cryptographiques reconnus (AES-256-GCM, bcrypt, JWT), nous avons développé une application conforme aux recommandations de l'ANSSI.
+</p>
+<p>
+Au-delà des aspects techniques, le système de gamification intégré démontre qu'il est possible de rendre la sécurité informatique engageante et motivante pour les utilisateurs non-experts. L'interface épurée, inspirée de solutions professionnelles comme Proton Pass, offre une expérience utilisateur fluide sans compromettre la sécurité.
+</p>
+<p>
+Ce projet nous a permis de mettre en pratique les connaissances acquises en cybersécurité, en développement web fullstack et en conception d'API REST sécurisées. Les pistes d'amélioration futures incluent : l'ajout d'une authentification à deux facteurs (2FA), le support d'une extension navigateur, et la migration vers un chiffrement côté client (Zero-Knowledge Architecture).
+</p>
+
+<!-- ===== 11. RÉFÉRENCES ===== -->
+<h2 id="references">11. Références</h2>
+
+<ol>
+  <li>ANSSI (2021). <em>Recommandations relatives à l'authentification multifacteur et aux mots de passe</em>. ANSSI-PA-082. <a href="https://www.ssi.gouv.fr">www.ssi.gouv.fr</a></li>
+  <li>OWASP (2023). <em>OWASP Top Ten</em>. Open Web Application Security Project. <a href="https://owasp.org/www-project-top-ten/">owasp.org</a></li>
+  <li>Mozilla Developer Network. <em>Web Crypto API — AES-GCM</em>. <a href="https://developer.mozilla.org">developer.mozilla.org</a></li>
+  <li>Node.js Documentation. <em>Crypto module</em>. <a href="https://nodejs.org/api/crypto.html">nodejs.org/api/crypto.html</a></li>
+  <li>JWT.io. <em>Introduction to JSON Web Tokens</em>. <a href="https://jwt.io/introduction">jwt.io/introduction</a></li>
+  <li>Kelsey, J. &amp; Schneier, B. (1996). <em>Key Schedule Weaknesses in IDEA</em>. Fast Software Encryption.</li>
+  <li>MongoDB Documentation. <em>Mongoose ODM</em>. <a href="https://mongoosejs.com">mongoosejs.com</a></li>
+  <li>Express.js Documentation. <em>Production Best Practices: Security</em>. <a href="https://expressjs.com/en/advanced/best-practice-security.html">expressjs.com</a></li>
+  <li>bcrypt.js GitHub. <em>A bcrypt library for NodeJS</em>. <a href="https://github.com/kelektiv/node.bcrypt.js">github.com/kelektiv/node.bcrypt.js</a></li>
+  <li>NIST SP 800-63B. <em>Digital Identity Guidelines — Authentication</em>. <a href="https://pages.nist.gov/800-63-3/">pages.nist.gov/800-63-3</a></li>
+</ol>
+
+<br><br>
+<hr>
+<p style="text-align:center; color:#888; font-size:10pt;">
+  TAMYCS Shield — Rapport de projet Web Programming · ESAIP La Salle · Bachelor 3 Cybersécurité · 2025-2026<br>
+  Oumar Touré · Rodney · Fresnel
+</p>
+
+</body>
+</html>
